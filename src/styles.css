@@ -1,0 +1,117 @@
+:root {
+  --hud-size: 340px;
+  --hud-radius: 12px;
+  --hud-bg: rgba(20, 20, 20, 0.75);
+  --hud-fg: #f2f2f2;
+  --titlebar-height: 28px;
+
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  /*
+   * 브라우저에서 반투명이 어떻게 보이는지 확인하기 위한 배경.
+   * 실제 Tauri 창에서는 body 가 투명하고 .hud 가 창 전체를 채운다.
+   */
+  background-color: #d9d4cc;
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.06) 75%);
+  background-size: 32px 32px;
+  background-position: 0 0, 0 16px, 16px -16px, -16px 0;
+}
+
+.hud {
+  position: relative;
+  width: var(--hud-size);
+  height: var(--hud-size);
+  flex: none;
+
+  overflow: hidden;
+  border-radius: var(--hud-radius);
+  background-color: var(--hud-bg);
+  color: var(--hud-fg);
+
+  /* 캐릭터를 드래그로 집어 옮기는 창이므로 텍스트 선택은 막는다. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 캔버스가 창 전체를 채우므로 타이틀바는 그 위에 떠 있다. */
+.titlebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+
+  height: var(--titlebar-height);
+  padding: 0 4px;
+
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.titlebar__button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+
+  display: grid;
+  place-items: center;
+
+  background-color: rgba(20, 20, 20, 0.35);
+  color: rgba(242, 242, 242, 0.75);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.titlebar__button:hover {
+  background-color: rgba(20, 20, 20, 0.7);
+  color: var(--hud-fg);
+}
+
+.titlebar__button:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 1px;
+}
+
+.titlebar__button--close:hover {
+  background-color: #c8443c;
+  color: #ffffff;
+}
+
+.hud__stage {
+  width: 100%;
+  height: 100%;
+}
+
+/* 논리 85x85 를 4배로 확대한다. 확대 시 보간하지 않는다. */
+.hud__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>quokka-hud</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <!-- 340x340 고정. 실제 창에서는 이 요소가 창 전체를 채운다. -->
+    <main class="hud" data-tauri-drag-region>
+      <!-- 캔버스가 340x340 을 다 쓰므로 타이틀바는 그 위에 얹는다. -->
+      <div class="titlebar" data-tauri-drag-region>
+        <button
+          type="button"
+          class="titlebar__button"
+          data-window-action="minimize"
+          aria-label="최소화"
+        >
+          &#8722;
+        </button>
+        <button
+          type="button"
+          class="titlebar__button titlebar__button--close"
+          data-window-action="close"
+          aria-label="닫기"
+        >
+          &#215;
+        </button>
+      </div>
+
+      <!-- 85x85 캔버스가 main.ts 에서 여기 붙는다. -->
+      <div class="hud__stage" data-tauri-drag-region></div>
+    </main>
+  </body>
+</html>
