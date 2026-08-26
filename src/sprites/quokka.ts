@@ -18,9 +18,10 @@
  */
 
 import { QUOKKA_PALETTE } from "../render/palette";
-import { createPixelSprite, type Sprite } from "../render/sprite";
+import { createImageSprite, createPixelSprite, type Sprite } from "../render/sprite";
+import quokkaIdleImage from "../assets/quokka_idle.png";
 
-export const QUOKKA_SIZE = 32;
+export const QUOKKA_SIZE = 24;
 
 /**
  * idle 2프레임.
@@ -99,7 +100,14 @@ const IDLE_FRAMES: readonly (readonly string[])[] = [
   ],
 ];
 
-export const quokkaIdle: Sprite = createPixelSprite({
+export const quokkaIdlePixel: Sprite = createPixelSprite({
   frames: IDLE_FRAMES,
   palette: QUOKKA_PALETTE,
+});
+
+export const quokkaIdle: Sprite = createImageSprite({
+  src: quokkaIdleImage,
+  width: QUOKKA_SIZE,
+  height: QUOKKA_SIZE,
+  yOffsets: [0, 1],
 });

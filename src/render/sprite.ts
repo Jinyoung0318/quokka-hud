@@ -59,6 +59,42 @@ export interface PixelSpriteDefinition {
   readonly palette: Readonly<Record<string, Rgb>>;
 }
 
+export interface ImageSpriteDefinition {
+  readonly src: string;
+  readonly width: number;
+  readonly height: number;
+  readonly yOffsets: readonly number[];
+}
+
+/** 비동기 이미지가 준비되기 전에는 그리지 않는 스프라이트. */
+export function createImageSprite(definition: ImageSpriteDefinition): Sprite {
+  const image = new Image();
+  let loaded = false;
+
+  image.addEventListener("load", () => {
+    loaded = true;
+  });
+  image.src = definition.src;
+
+  return {
+    width: definition.width,
+    height: definition.height,
+    frameCount: definition.yOffsets.length,
+    drawFrame(ctx, x, y, frameIndex, scale) {
+      if (!loaded) return;
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        image,
+        x,
+        y + definition.yOffsets[frameIndex] * scale,
+        definition.width * scale,
+        definition.height * scale,
+      );
+    },
+  };
+}
+
 /** 같은 색 픽셀을 묶어둔 것. 프레임마다 fillStyle 을 색 수만큼만 바꾼다. */
 interface ColorRun {
   readonly style: string;
