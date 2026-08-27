@@ -10,10 +10,10 @@ import { drawGround, drawSky } from "./sky";
 import { drawStars } from "./stars";
 import { drawSunAndMoon } from "./sun";
 import { drawGrass } from "./grass";
-import { drawTree } from "./tree";
+import { drawLeaf, drawTree } from "./tree";
 import { drawPond } from "./pond";
 import { drawSprite, type Sprite } from "./sprite";
-import { QUOKKA_Y, STATION_X } from "./layout";
+import { HELD_LEAF_X, HELD_LEAF_Y, QUOKKA_Y, STATION_X } from "./layout";
 import { quokkaIdle } from "../sprites/quokka";
 import type { Choreography } from "../state/choreography";
 import type { Frame } from "./loop";
@@ -42,7 +42,14 @@ export function drawScene(
 
   // 쿼카는 맨 앞. 나무 앞에 서도 가려지지 않는다.
   // tick 을 그대로 넘기면 8fps 로 프레임이 순환한다.
-  drawSprite(ctx, quokka, quokkaXOf(choreography), QUOKKA_Y, frame.tick);
+  const quokkaX = quokkaXOf(choreography);
+  drawSprite(ctx, quokka, quokkaX, QUOKKA_Y, frame.tick);
+
+  // 뜯은 잎은 배 앞 가운데, 앞발 바로 위에 그린다.
+  // 쿼카 좌표에 얹으므로 걸어가면 그대로 따라온다.
+  if (choreography.heldLeaf) {
+    drawLeaf(ctx, palette, quokkaX + HELD_LEAF_X, QUOKKA_Y + HELD_LEAF_Y);
+  }
 }
 
 /** 연출이 정한 지점을 화면 x 좌표로 옮긴다. */

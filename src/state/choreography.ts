@@ -51,6 +51,8 @@ export interface Choreography {
   canopy: number;
   /** 그릴 물 높이. 차오르는 중에는 소수가 나온다. */
   water: number;
+  /** 앞발에 뜯은 잎을 들고 있는가. 나무에서 연못까지만 참이다. */
+  heldLeaf: boolean;
 }
 
 // ---------------------------------------------------------------- 타임라인
@@ -103,11 +105,16 @@ export function resting(canopy: number, water: number): Choreography {
     action: "idle",
     canopy,
     water,
+    heldLeaf: false,
   };
 }
 
 /**
  * 소비 전환. 나무 -> 잎 -> 연못 -> 물 -> 복귀.
+ *
+ * 잎을 뜯는 순간 수관이 줄면서 동시에 앞발에 잎이 생기고, 그 잎은
+ * 연못에서 물을 마시기 시작할 때 사라진다. 뜯은 잎을 들고 가는 셈이라
+ * 나무와 연못이 한 동작으로 이어진다.
  *
  * 한 번에 두 단계를 건너뛰면(75 -> 25) 수관과 물이 한 번에 두 칸만큼
  * 줄어든다. 동작은 그대로 한 번씩만 한다.
@@ -123,19 +130,22 @@ export function consuming(
   const canopy = progress >= BITE_AT ? targetCanopy : startCanopy;
   const water = progress >= SIP_AT ? targetWater : startWater;
 
+  // 뜯은 순간부터 물을 마시기 시작할 때까지 들고 있다.
+  const heldLeaf = progress >= BITE_AT && progress < WALK_TO_POND_END;
+  const rest = { canopy, water, heldLeaf };
+
   if (progress < WALK_TO_TREE_END) {
     return {
       from: "home",
       to: "tree",
       travel: segment(progress, 0, WALK_TO_TREE_END),
       action: "walking",
-      canopy,
-      water,
+      ...rest,
     };
   }
 
   if (progress < EAT_END) {
-    return { from: "tree", to: "tree", travel: 1, action: "eating", canopy, water };
+    return { from: "tree", to: "tree", travel: 1, action: "eating", ...rest };
   }
 
   if (progress < WALK_TO_POND_END) {
@@ -144,13 +154,12 @@ export function consuming(
       to: "pond",
       travel: segment(progress, EAT_END, WALK_TO_POND_END),
       action: "walking",
-      canopy,
-      water,
+      ...rest,
     };
   }
 
   if (progress < DRINK_END) {
-    return { from: "pond", to: "pond", travel: 1, action: "drinking", canopy, water };
+    return { from: "pond", to: "pond", travel: 1, action: "drinking", ...rest };
   }
 
   return {
@@ -158,8 +167,7 @@ export function consuming(
     to: "home",
     travel: segment(progress, DRINK_END, 1),
     action: "walking",
-    canopy,
-    water,
+    ...rest,
   };
 }
 
@@ -186,6 +194,7 @@ export function resetting(
     action: "reacting",
     canopy: startCanopy + (targetCanopy - startCanopy) * grown,
     water: startWater + (targetWater - startWater) * filled,
+    heldLeaf: false,
   };
 }
 

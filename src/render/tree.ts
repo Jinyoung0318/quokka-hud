@@ -19,6 +19,7 @@ import {
   CANOPY_BLOBS,
   CANOPY_CENTER_X,
   CANOPY_CENTER_Y,
+  LEAF_SIZE,
   TRUNK_BASE_Y,
   TRUNK_FLARE_Y,
   TRUNK_TOP_Y,
@@ -114,6 +115,21 @@ function placeBlob(
     y: CANOPY_CENTER_Y + Math.round(blob.dy * spread),
     r: Math.max(2, Math.round(blob.r * size)),
   };
+}
+
+/**
+ * 뜯어서 손에 든 잎 한 장.
+ *
+ * 수관과 같은 색을 쓰되 그늘색으로 테를 둘러 배경이나 몸통에 묻히지 않게 한다.
+ */
+export function drawLeaf(
+  ctx: CanvasRenderingContext2D,
+  palette: ScenePalette,
+  x: number,
+  y: number,
+): void {
+  fillRect(ctx, x, y, LEAF_SIZE, LEAF_SIZE, palette.leafDeep);
+  fillRect(ctx, x, y, LEAF_SIZE - 1, LEAF_SIZE - 1, palette.leaf);
 }
 
 function clamp01(value: number): number {
