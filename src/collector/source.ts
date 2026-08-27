@@ -6,7 +6,9 @@
  */
 
 import type { UsageSnapshot } from "../snapshot";
+import { IS_TAURI } from "../runtime";
 import { createClaudeCliSource } from "./claudeCli";
+import { createTauriSource } from "./tauriSource";
 import {
   createBrowserSource,
   type BrowserSourceMode,
@@ -28,10 +30,16 @@ export interface UsageSource {
 /**
  * 지금 환경에서 쓸 수 있는 수집기를 고른다.
  *
- * Node 에서는 claude CLI 를 직접 부른다. 브라우저에서는 프로세스를 띄울 수
- * 없어서, 개발 서버를 거쳐 실제 값을 받거나 목 데이터로 돈다.
+ *   Tauri 창  - Rust 커맨드를 부른다. 빌드된 exe 가 쓰는 길이다
+ *   Node      - claude CLI 를 직접 부른다. Vite 개발 서버 플러그인이 이쪽이다
+ *   브라우저  - 개발 서버의 /__dev/usage 를 부르고, 안 되면 목 데이터로 돈다
+ *
+ * Tauri 를 가장 먼저 본다. `tauri dev` 에서는 웹뷰가 Vite 개발 서버를 보고
+ * 있어서 둘 다 쓸 수 있는데, 그때도 빌드된 exe 와 같은 길로 돌아야
+ * 개발 중에 확인한 것이 그대로 배포본에서 돈다.
  */
 export function createUsageSource(): UsageSource {
+  if (IS_TAURI) return createTauriSource();
   return canRunProcesses() ? createClaudeCliSource() : createBrowserSource();
 }
 
