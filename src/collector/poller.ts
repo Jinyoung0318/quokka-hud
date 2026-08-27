@@ -37,11 +37,30 @@ export interface UsagePollerOptions {
   onSnapshot: (snapshot: UsageSnapshot) => void;
   /** 테스트에서 시계를 넘기기 위한 자리. */
   now?: () => Date;
+  /**
+   * 성공한 뒤 다음 조회까지 기다리는 시간.
+   *
+   * 예약할 때마다 물어보므로 도중에 바뀌어도 다음 회차부터 반영된다.
+   * 넘기지 않으면 POLL_INTERVAL_MS 를 쓴다.
+   */
+  intervalMs?: () => number;
 }
 
-/** 폴링을 시작하고 멈추는 함수를 돌려준다. */
-export function startUsagePolling(options: UsagePollerOptions): () => void {
+export interface UsagePollerHandle {
+  stop(): void;
+  /**
+   * 예약된 시각을 기다리지 않고 지금 한 번 조회한다.
+   *
+   * 주기를 바꾼 직후에 부르면 새 주기가 곧바로 걸린다. 이미 조회 중이면
+   * 아무것도 하지 않는다. 그 조회가 끝나면서 어차피 다시 예약된다.
+   */
+  pollNow(): void;
+}
+
+/** 폴링을 시작한다. */
+export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandle {
   const now = options.now ?? (() => new Date());
+  const intervalMs = options.intervalMs ?? (() => POLL_INTERVAL_MS);
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   let running = true;
@@ -78,7 +97,7 @@ export function startUsagePolling(options: UsagePollerOptions): () => void {
       failures = 0;
       last = snapshot;
       options.onSnapshot(snapshot);
-      schedule(POLL_INTERVAL_MS);
+      schedule(intervalMs());
       return;
     }
 
@@ -96,12 +115,23 @@ export function startUsagePolling(options: UsagePollerOptions): () => void {
   // 앱이 뜨자마자 한 번. 주기를 기다리지 않는다.
   void tick();
 
-  return () => {
-    running = false;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
+  return {
+    stop() {
+      running = false;
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+
+    pollNow() {
+      if (!running || inFlight) return;
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      void tick();
+    },
   };
 }
 

@@ -7,7 +7,7 @@
 
 import type { UsageSnapshot } from "../snapshot";
 import { createClaudeCliSource } from "./claudeCli";
-import { createMockSource } from "./mockSource";
+import { createMockSource, type MockUsageSource } from "./mockSource";
 
 export interface UsageSource {
   /** 로그와 개발용 표시에 쓰는 이름. */
@@ -30,6 +30,16 @@ export interface UsageSource {
  */
 export function createUsageSource(): UsageSource {
   return canRunProcesses() ? createClaudeCliSource() : createMockSource();
+}
+
+/**
+ * 목 수집기면 흐르게/멈추게 한다. 실제 수집기면 아무 일도 하지 않는다.
+ *
+ * 개발용 패널이 수집기 종류를 알 필요 없게 하려고 여기에 둔다.
+ */
+export function setMockDraining(source: UsageSource, draining: boolean): void {
+  const mock = source as Partial<MockUsageSource>;
+  mock.setDraining?.(draining);
 }
 
 /** Node 런타임인가. 브라우저에는 process.versions.node 가 없다. */

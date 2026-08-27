@@ -5,12 +5,17 @@ import { drawScene } from "./render/scene";
 import { SceneDirector } from "./state/director";
 import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
-import { createUsageSource } from "./collector/source";
-import { startUsagePolling } from "./collector/poller";
+import { createUsageSource, setMockDraining } from "./collector/source";
+import { startUsagePolling, POLL_INTERVAL_MS, type UsagePollerHandle } from "./collector/poller";
 
-// 개발용 도구. 제거할 때는 이 import 와 아래 mount 호출, zoomed 분기를 지운다.
+// 개발용 도구. 제거할 때는 이 import 와 아래 "개발용" 표시가 붙은 자리를 지운다.
 import { mountUsageSlider } from "./dev/usageSlider";
 import { drawZoomedSprite, mountSpriteZoomToggle } from "./dev/spriteZoom";
+import {
+  mountUsageMonitor,
+  controllerFor,
+  MOCK_POLL_INTERVAL_MS,
+} from "./dev/usageMonitor";
 
 /** 첫 조회가 도착하기 전까지 보여줄 값. */
 const INITIAL_REMAINING_PCT = 100;
@@ -32,7 +37,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   /**
-   * 개발용 슬라이더를 한 번이라도 건드리면 그쪽이 화면을 잡는다.
+   * 개발용 슬라이더를 한 번이라도 건드렸는가.
    *
    * 폴링과 슬라이더가 같은 화면을 두고 다투면 손으로 맞춰놓은 값이
    * 다음 조회에 되돌아가 버린다. 그래서 한쪽만 화면을 잡는다.
@@ -54,28 +59,64 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const source = createUsageSource();
 
-  startUsagePolling({
-    source,
-    onSnapshot: (snapshot) => {
-      if (manualOverride) return;
-      applyUsage(snapshot.remainingPct);
-    },
-  });
+  // 개발용 — 목 흐름을 켜면 폴링 주기가 짧아진다.
+  let mockDraining = false;
+  let poller: UsagePollerHandle | null = null;
 
-  mountUsageSlider({
+  const slider = mountUsageSlider({
     initial: INITIAL_REMAINING_PCT,
     onChange: (value) => {
+      // 목 흐름 중에는 슬라이더가 꺼져 있어 여기까지 오지 않지만,
+      // 규칙이 한 곳에만 있도록 여기서도 막는다.
+      if (mockDraining) return;
       manualOverride = true;
       applyUsage(value);
+      syncControl();
     },
     snap: snapRemaining,
     phase: phaseOf,
   });
 
+  // 개발용
+  const monitor = mountUsageMonitor({
+    initialMock: mockDraining,
+    onMockChange: (draining) => {
+      mockDraining = draining;
+      setMockDraining(source, draining);
+      syncControl();
+      // 주기가 바뀌었으니 예약된 시각을 기다리지 않고 바로 한 번 돈다.
+      poller?.pollNow();
+    },
+  });
+
+  /** 규칙은 controllerFor() 에 있다. 여기서는 화면에 반영만 한다. */
+  const controllerNow = () => controllerFor(mockDraining, manualOverride);
+
+  const syncControl = () => {
+    // 지는 쪽은 아예 만질 수 없게 한다. 움직여도 아무 일이 없으면
+    // 고장난 것으로 보인다.
+    slider.setEnabled(!mockDraining);
+    monitor.setController(controllerNow());
+  };
+
+  // 개발용
   mountSpriteZoomToggle({
     initial: zoomed,
     onChange: (value) => {
       zoomed = value;
+    },
+  });
+
+  syncControl(); // 개발용
+
+  poller = startUsagePolling({
+    source,
+    // 개발용 — mockDraining 이 없으면 늘 기본 주기다.
+    intervalMs: () => (mockDraining ? MOCK_POLL_INTERVAL_MS : POLL_INTERVAL_MS),
+    onSnapshot: (snapshot) => {
+      monitor.update(snapshot, source.name); // 개발용
+      if (controllerNow() !== "collector") return;
+      applyUsage(snapshot.remainingPct);
     },
   });
 });

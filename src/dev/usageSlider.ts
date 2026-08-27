@@ -57,6 +57,13 @@ const STYLE = `
   accent-color: #7cad5c;
   cursor: pointer;
 }
+/* 수집기가 화면을 잡고 있을 때. 움직여도 반영되지 않으므로 못 만지게 한다. */
+.dev-usage--disabled {
+  opacity: 0.4;
+}
+.dev-usage__input:disabled {
+  cursor: not-allowed;
+}
 `;
 
 export interface UsageSliderOptions {
@@ -68,8 +75,19 @@ export interface UsageSliderOptions {
   phase: (remainingPct: number) => string;
 }
 
-/** 슬라이더를 붙이고 제거 함수를 돌려준다. */
-export function mountUsageSlider(options: UsageSliderOptions): () => void {
+export interface UsageSliderHandle {
+  /**
+   * 만질 수 있게 할지 정한다.
+   *
+   * 수집기가 화면을 잡고 있을 때는 꺼둔다. 움직여도 아무 일이 없으면
+   * 고장난 것으로 보인다.
+   */
+  setEnabled(enabled: boolean): void;
+  remove(): void;
+}
+
+/** 슬라이더를 붙이고 손잡이를 돌려준다. */
+export function mountUsageSlider(options: UsageSliderOptions): UsageSliderHandle {
   injectStyle();
 
   const root = document.createElement("div");
@@ -124,9 +142,16 @@ export function mountUsageSlider(options: UsageSliderOptions): () => void {
 
   update(options.initial, false);
 
-  return () => {
-    root.remove();
-    document.getElementById(STYLE_ID)?.remove();
+  return {
+    setEnabled(enabled: boolean) {
+      input.disabled = !enabled;
+      root.classList.toggle("dev-usage--disabled", !enabled);
+    },
+
+    remove() {
+      root.remove();
+      document.getElementById(STYLE_ID)?.remove();
+    },
   };
 }
 
