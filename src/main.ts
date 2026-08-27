@@ -2,7 +2,7 @@ import { bindWindowControls } from "./titlebar/windowControls";
 import { createPixelCanvas } from "./render/canvas";
 import { startRenderLoop } from "./render/loop";
 import { drawScene } from "./render/scene";
-import { CycleAnimator } from "./state/cycle";
+import { SceneDirector } from "./state/director";
 import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
 
@@ -22,24 +22,24 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   const ctx = createPixelCanvas(stage);
-  const cycle = new CycleAnimator(phaseIndexOf(INITIAL_REMAINING_PCT));
+  const director = new SceneDirector(phaseIndexOf(INITIAL_REMAINING_PCT));
 
   /** 새 잔여율을 받았을 때의 처리. 수집기가 붙으면 여기에 연결한다. */
   const applyUsage = (remainingPct: number) => {
-    cycle.setPhase(phaseIndexOf(remainingPct));
+    director.setPhase(phaseIndexOf(remainingPct));
   };
 
   let zoomed = false;
 
   startRenderLoop((frame) => {
-    cycle.advance(frame.delta);
+    director.advance(frame.delta);
 
     if (zoomed) {
       drawZoomedSprite(ctx, quokkaIdle, frame);
       return;
     }
 
-    drawScene(ctx, cycle.orbit, frame, quokkaIdle);
+    drawScene(ctx, director.orbit, director.choreography, frame, quokkaIdle);
   });
 
   mountUsageSlider({

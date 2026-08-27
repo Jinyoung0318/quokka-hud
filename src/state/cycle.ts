@@ -15,10 +15,13 @@ import { PHASE_COUNT } from "./skyState";
 
 /**
  * 스냅값이 바뀌었을 때 새 위치까지 이동하는 데 걸리는 시간.
- * 5000~10000 사이에서 조정한다. 이동 거리와 무관하게 이 시간이 걸리므로
- * 리셋으로 한 바퀴를 도는 경우에도 같은 시간 안에 완주한다.
+ *
+ * 해의 이동과 쿼카의 연출(나무 -> 잎 -> 연못 -> 물 -> 복귀)이 같은 시간을
+ * 나눠 쓴다. 동작이 다섯 토막이라 7초로는 각 토막이 너무 짧다.
+ * 이동 거리와 무관하게 이 시간이 걸리므로 리셋으로 한 바퀴를 도는 경우에도
+ * 같은 시간 안에 완주한다.
  */
-export const CYCLE_TRANSITION_MS = 7000;
+export const CYCLE_TRANSITION_MS = 10000;
 
 /**
  * 천체의 가감속이라 사인 곡선을 쓴다.
@@ -50,6 +53,17 @@ export class CycleAnimator {
 
   get isMoving(): boolean {
     return this.elapsed < this.duration;
+  }
+
+  /**
+   * 전환 진행도 0~1. 가감속을 먹이지 않은 선형 값이다.
+   *
+   * 해는 easeInOutSine 으로 부드럽게 움직이지만 쿼카가 걷는 속도까지
+   * 출렁이면 어색해서, 연출 타이밍은 이 선형 값으로 잡는다.
+   */
+  get progress(): number {
+    if (this.duration === 0) return 1;
+    return Math.min(this.elapsed / this.duration, 1);
   }
 
   /**

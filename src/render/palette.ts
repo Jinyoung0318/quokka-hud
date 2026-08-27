@@ -23,6 +23,16 @@ export interface ScenePalette {
   grass: Rgb;
   sun: Rgb;
   sunCore: Rgb;
+  /** 유칼립투스 줄기와 가지. */
+  trunk: Rgb;
+  /** 수관에서 빛을 받는 쪽. */
+  leaf: Rgb;
+  /** 수관의 그늘진 쪽. 단색이면 덩어리가 납작해 보인다. */
+  leafDeep: Rgb;
+  /** 연못 수면. */
+  water: Rgb;
+  /** 연못 깊은 쪽. 수면과 나눠 칠해야 물이 고여 보인다. */
+  waterDeep: Rgb;
 }
 
 function rgb(r: number, g: number, b: number): Rgb {
@@ -43,6 +53,11 @@ export const PHASE_PALETTES: ReadonlyArray<ScenePalette> = [
     grass: rgb(0x6f, 0x9c, 0x55),
     sun: rgb(0xff, 0xca, 0x7c),
     sunCore: rgb(0xff, 0xf2, 0xcc),
+    trunk: rgb(0x8a, 0x6a, 0x4e),
+    leaf: rgb(0x86, 0xb1, 0x7a),
+    leafDeep: rgb(0x54, 0x82, 0x55),
+    water: rgb(0x6f, 0xb3, 0xd9),
+    waterDeep: rgb(0x3d, 0x7f, 0xa8),
   },
   {
     // noon
@@ -53,6 +68,11 @@ export const PHASE_PALETTES: ReadonlyArray<ScenePalette> = [
     grass: rgb(0x7c, 0xad, 0x5c),
     sun: rgb(0xff, 0xe5, 0x8e),
     sunCore: rgb(0xff, 0xfc, 0xe8),
+    trunk: rgb(0x99, 0x77, 0x58),
+    leaf: rgb(0x93, 0xc4, 0x85),
+    leafDeep: rgb(0x60, 0x94, 0x60),
+    water: rgb(0x7c, 0xc4, 0xe8),
+    waterDeep: rgb(0x47, 0x90, 0xb8),
   },
   {
     // dusk
@@ -63,6 +83,12 @@ export const PHASE_PALETTES: ReadonlyArray<ScenePalette> = [
     grass: rgb(0x5f, 0x71, 0x48),
     sun: rgb(0xff, 0x7a, 0x42),
     sunCore: rgb(0xff, 0xc0, 0x72),
+    trunk: rgb(0x6b, 0x4c, 0x3c),
+    leaf: rgb(0x6f, 0x85, 0x60),
+    leafDeep: rgb(0x46, 0x56, 0x40),
+    // 노을이 비쳐 물빛이 보라로 돈다.
+    water: rgb(0x8a, 0x7b, 0xb0),
+    waterDeep: rgb(0x4e, 0x3f, 0x70),
   },
   {
     // night
@@ -75,6 +101,11 @@ export const PHASE_PALETTES: ReadonlyArray<ScenePalette> = [
     // 해질녘에서 넘어오는 동안 보간되므로 값은 있어야 한다.
     sun: rgb(0xb0, 0x4a, 0x2e),
     sunCore: rgb(0xd9, 0x76, 0x4a),
+    trunk: rgb(0x2f, 0x2a, 0x26),
+    leaf: rgb(0x35, 0x47, 0x3a),
+    leafDeep: rgb(0x20, 0x2d, 0x27),
+    water: rgb(0x2a, 0x35, 0x60),
+    waterDeep: rgb(0x18, 0x20, 0x40),
   },
 ];
 
@@ -108,6 +139,11 @@ function lerpPalette(a: ScenePalette, b: ScenePalette, t: number): ScenePalette 
     grass: lerpRgb(a.grass, b.grass, t),
     sun: lerpRgb(a.sun, b.sun, t),
     sunCore: lerpRgb(a.sunCore, b.sunCore, t),
+    trunk: lerpRgb(a.trunk, b.trunk, t),
+    leaf: lerpRgb(a.leaf, b.leaf, t),
+    leafDeep: lerpRgb(a.leafDeep, b.leafDeep, t),
+    water: lerpRgb(a.water, b.water, t),
+    waterDeep: lerpRgb(a.waterDeep, b.waterDeep, t),
   };
 }
 
