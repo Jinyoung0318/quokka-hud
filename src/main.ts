@@ -1,5 +1,6 @@
 import { markRuntime } from "./runtime";
 import { bindWindowControls } from "./titlebar/windowControls";
+import { mountScaleButton } from "./titlebar/scaleButton";
 import { createPixelCanvas } from "./render/canvas";
 import { startRenderLoop } from "./render/loop";
 import { drawScene } from "./render/scene";
@@ -33,6 +34,7 @@ markRuntime();
 
 window.addEventListener("DOMContentLoaded", () => {
   bindWindowControls();
+  void mountScaleButton();
 
   const stage = document.querySelector<HTMLElement>(".hud__stage");
   if (!stage) {

@@ -13,22 +13,40 @@
     <main class="hud" data-tauri-drag-region>
       <!-- 캔버스가 340x340 을 다 쓰므로 타이틀바는 그 위에 얹는다. -->
       <div class="titlebar" data-tauri-drag-region>
+        <!--
+          배율 버튼. 누를 때마다 3x -> 4x -> 5x -> 6x -> 3x 로 돈다.
+          라벨은 src/titlebar/scaleButton.ts 가 채운다.
+
+          버튼에는 data-tauri-drag-region 을 걸지 않는다. 걸면 누르는 순간
+          창 드래그로 잡혀 클릭이 먹지 않는다.
+        -->
         <button
           type="button"
-          class="titlebar__button"
-          data-window-action="minimize"
-          aria-label="최소화"
+          class="titlebar__button titlebar__button--scale"
+          data-titlebar-action="cycle-scale"
+          aria-label="창 배율 바꾸기"
         >
-          &#8722;
+          &#8203;
         </button>
-        <button
-          type="button"
-          class="titlebar__button titlebar__button--close"
-          data-window-action="close"
-          aria-label="닫기"
-        >
-          &#215;
-        </button>
+
+        <div class="titlebar__group" data-tauri-drag-region>
+          <button
+            type="button"
+            class="titlebar__button"
+            data-window-action="minimize"
+            aria-label="최소화"
+          >
+            &#8722;
+          </button>
+          <button
+            type="button"
+            class="titlebar__button titlebar__button--close"
+            data-window-action="close"
+            aria-label="닫기"
+          >
+            &#215;
+          </button>
+        </div>
       </div>
 
       <!-- 85x85 캔버스가 main.ts 에서 여기 붙는다. -->

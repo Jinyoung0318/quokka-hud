@@ -91,16 +91,26 @@ body {
   height: 100vh;
 }
 
-/* 캔버스가 창 전체를 채우므로 타이틀바는 그 위에 떠 있다. */
+/*
+ * 캔버스가 창 전체를 채우므로 타이틀바는 그 위에 떠 있다.
+ * 배율 버튼은 왼쪽 끝, 최소화 · 닫기는 오른쪽 끝에 붙인다.
+ */
 .titlebar {
   position: absolute;
   top: 0;
+  left: 0;
   right: 0;
   z-index: 1;
 
   height: var(--titlebar-height);
   padding: 0 4px;
 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.titlebar__group {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -138,6 +148,18 @@ body {
 .titlebar__button--close:hover {
   background-color: #c8443c;
   color: #ffffff;
+}
+
+/* 배율은 "4x" 라 아이콘 하나보다 넓다. 폭을 글자에 맞춘다. */
+.titlebar__button--scale {
+  width: auto;
+  min-width: 24px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* 3x 와 4x 의 폭이 달라 버튼이 들썩이지 않게. */
+  font-variant-numeric: tabular-nums;
 }
 
 .hud__stage {
