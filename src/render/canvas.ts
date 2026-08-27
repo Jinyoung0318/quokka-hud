@@ -1,13 +1,14 @@
 /**
- * 논리 해상도 85x85 캔버스를 만들고 4배로 확대해 띄운다.
+ * 논리 해상도 85x85 캔버스를 만들어 띄운다.
  * 이 파일 밖의 모든 좌표는 85x85 기준이다.
+ *
+ * 확대 배율은 여기서 정하지 않는다. 캔버스가 CSS 로 부모를 100% 채우고,
+ * 창 한 변이 늘 LOGICAL_SIZE 의 정수배라 배율이 저절로 정수로 따라온다.
+ * 창 크기는 트레이 메뉴에서 고르며 src-tauri/src/settings.rs 가 들고 있다.
  */
 
-/** 논리 해상도. 이후 모든 좌표의 기준. */
+/** 논리 해상도. 이후 모든 좌표의 기준. src-tauri 의 LOGICAL_SIZE 와 같아야 한다. */
 export const LOGICAL_SIZE = 85;
-
-/** 화면 배율. 85 * 4 = 340 으로 창 크기와 맞는다. */
-export const SCALE = 4;
 
 /** 지평선. 아래쪽 1/4 지점 = 위에서 3/4 지점. */
 export const HORIZON_Y = Math.round(LOGICAL_SIZE * 0.75);
