@@ -5,7 +5,8 @@ import { drawScene } from "./render/scene";
 import { SceneDirector } from "./state/director";
 import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
-import { createUsageSource, setMockDraining } from "./collector/source";
+import { createUsageSource, setMockDraining, setSourceMode } from "./collector/source";
+import type { BrowserSourceMode } from "./collector/browserSource";
 import { startUsagePolling, POLL_INTERVAL_MS, type UsagePollerHandle } from "./collector/poller";
 
 // 개발용 도구. 제거할 때는 이 import 와 아래 "개발용" 표시가 붙은 자리를 지운다.
@@ -59,16 +60,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const source = createUsageSource();
 
-  // 개발용 — 목 흐름을 켜면 폴링 주기가 짧아진다.
+  // 개발용 — 소스 선택과 목 흐름. 목이 흐를 때만 폴링 주기가 짧아진다.
+  let sourceMode: BrowserSourceMode = "cli";
   let mockDraining = false;
   let poller: UsagePollerHandle | null = null;
+
+  /** 목 데이터가 실제로 흐르는 중인가. 실제 CLI 를 쓰는 동안은 아니다. */
+  const mockFlowing = () => sourceMode === "mock" && mockDraining;
 
   const slider = mountUsageSlider({
     initial: INITIAL_REMAINING_PCT,
     onChange: (value) => {
       // 목 흐름 중에는 슬라이더가 꺼져 있어 여기까지 오지 않지만,
       // 규칙이 한 곳에만 있도록 여기서도 막는다.
-      if (mockDraining) return;
+      if (mockFlowing()) return;
       manualOverride = true;
       applyUsage(value);
       syncControl();
@@ -79,7 +84,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // 개발용
   const monitor = mountUsageMonitor({
+    initialMode: sourceMode,
     initialMock: mockDraining,
+
+    onModeChange: (mode) => {
+      sourceMode = mode;
+      setSourceMode(source, mode);
+      syncControl();
+      // 고른 소스의 값을 바로 보여준다.
+      poller?.pollNow();
+    },
+
     onMockChange: (draining) => {
       mockDraining = draining;
       setMockDraining(source, draining);
@@ -90,12 +105,13 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   /** 규칙은 controllerFor() 에 있다. 여기서는 화면에 반영만 한다. */
-  const controllerNow = () => controllerFor(mockDraining, manualOverride);
+  const controllerNow = () => controllerFor(mockFlowing(), manualOverride);
 
   const syncControl = () => {
     // 지는 쪽은 아예 만질 수 없게 한다. 움직여도 아무 일이 없으면
     // 고장난 것으로 보인다.
-    slider.setEnabled(!mockDraining);
+    slider.setEnabled(!mockFlowing());
+    monitor.setMockToggleEnabled(sourceMode === "mock");
     monitor.setController(controllerNow());
   };
 
@@ -111,8 +127,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   poller = startUsagePolling({
     source,
-    // 개발용 — mockDraining 이 없으면 늘 기본 주기다.
-    intervalMs: () => (mockDraining ? MOCK_POLL_INTERVAL_MS : POLL_INTERVAL_MS),
+    // 개발용 — 목이 흐를 때만 짧게. 실제 CLI 는 한 번에 7초쯤 걸려서
+    // 짧은 주기로 부르면 계속 겹친다.
+    intervalMs: () => (mockFlowing() ? MOCK_POLL_INTERVAL_MS : POLL_INTERVAL_MS),
     onSnapshot: (snapshot) => {
       monitor.update(snapshot, source.name); // 개발용
       if (controllerNow() !== "collector") return;

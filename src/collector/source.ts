@@ -7,7 +7,11 @@
 
 import type { UsageSnapshot } from "../snapshot";
 import { createClaudeCliSource } from "./claudeCli";
-import { createMockSource, type MockUsageSource } from "./mockSource";
+import {
+  createBrowserSource,
+  type BrowserSourceMode,
+  type BrowserUsageSource,
+} from "./browserSource";
 
 export interface UsageSource {
   /** 로그와 개발용 표시에 쓰는 이름. */
@@ -24,22 +28,27 @@ export interface UsageSource {
 /**
  * 지금 환경에서 쓸 수 있는 수집기를 고른다.
  *
- * 브라우저에서는 프로세스를 띄울 수 없어 목 데이터로 돈다. 화면과 폴링
- * 배선을 브라우저에서 그대로 확인할 수 있게 하려는 것이고, 실제 값은
- * Node(또는 나중의 Tauri) 에서만 들어온다.
+ * Node 에서는 claude CLI 를 직접 부른다. 브라우저에서는 프로세스를 띄울 수
+ * 없어서, 개발 서버를 거쳐 실제 값을 받거나 목 데이터로 돈다.
  */
 export function createUsageSource(): UsageSource {
-  return canRunProcesses() ? createClaudeCliSource() : createMockSource();
+  return canRunProcesses() ? createClaudeCliSource() : createBrowserSource();
 }
 
 /**
- * 목 수집기면 흐르게/멈추게 한다. 실제 수집기면 아무 일도 하지 않는다.
+ * 목 데이터를 흐르게/멈추게 한다. 그럴 수 없는 수집기면 아무 일도 하지 않는다.
  *
  * 개발용 패널이 수집기 종류를 알 필요 없게 하려고 여기에 둔다.
  */
 export function setMockDraining(source: UsageSource, draining: boolean): void {
-  const mock = source as Partial<MockUsageSource>;
-  mock.setDraining?.(draining);
+  const browser = source as Partial<BrowserUsageSource>;
+  browser.setDraining?.(draining);
+}
+
+/** 실제 값과 목 데이터 중 무엇을 쓸지 고른다. 브라우저에서만 의미가 있다. */
+export function setSourceMode(source: UsageSource, mode: BrowserSourceMode): void {
+  const browser = source as Partial<BrowserUsageSource>;
+  browser.setMode?.(mode);
 }
 
 /** Node 런타임인가. 브라우저에는 process.versions.node 가 없다. */
