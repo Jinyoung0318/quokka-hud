@@ -1,10 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
+  "description": "메인 창 권한. core:window:default 는 읽기 전용 게터만 주므로, 창을 끌어 옮기려면(start-dragging) 따로 켜야 한다.",
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "core:window:allow-start-dragging"
   ]
 }

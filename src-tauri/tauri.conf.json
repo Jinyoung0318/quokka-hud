@@ -14,8 +14,13 @@
     "windows": [
       {
         "title": "quokka-hud",
-        "width": 800,
-        "height": 600
+        "width": 340,
+        "height": 340,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": false
       }
     ],
     "security": {

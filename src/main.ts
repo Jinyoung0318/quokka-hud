@@ -1,3 +1,4 @@
+import { markRuntime } from "./runtime";
 import { bindWindowControls } from "./titlebar/windowControls";
 import { createPixelCanvas } from "./render/canvas";
 import { startRenderLoop } from "./render/loop";
@@ -22,6 +23,13 @@ import {
 
 /** 첫 조회가 도착하기 전까지 보여줄 값. */
 const INITIAL_REMAINING_PCT = 100;
+
+/*
+ * 브라우저인지 Tauri 창인지 <html> 에 표시한다.
+ * DOMContentLoaded 를 기다리지 않는다. 그 안에서 하면 배경이 이미 한 번
+ * 칠해진 뒤라 창에서 번쩍인다.
+ */
+markRuntime();
 
 window.addEventListener("DOMContentLoaded", () => {
   bindWindowControls();

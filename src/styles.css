@@ -1,4 +1,5 @@
 :root {
+  /* 브라우저에서 미리 볼 때의 크기. 창에서는 아래 data-runtime 규칙이 이긴다. */
   --hud-size: 340px;
   --hud-radius: 12px;
   --hud-bg: rgba(20, 20, 20, 0.75);
@@ -25,9 +26,20 @@ body {
   justify-content: center;
 
   /*
-   * 브라우저에서 반투명이 어떻게 보이는지 확인하기 위한 배경.
-   * 실제 Tauri 창에서는 body 가 투명하고 .hud 가 창 전체를 채운다.
+   * 기본은 투명. Tauri 창이 투명이라 여기에 무엇이든 칠하면 그대로 창에 남는다.
+   * 표시(data-runtime)가 붙기 전에 한 프레임 칠해지더라도 투명이 기본이면
+   * 창에서 회색이 번쩍일 일이 없다.
    */
+  background-color: transparent;
+}
+
+/*
+ * 브라우저에서만 까는 체커보드.
+ *
+ * 반투명 HUD 가 어떤 바탕 위에서 어떻게 보이는지 확인하려면 바탕이 있어야 한다.
+ * 창에서는 진짜 바탕화면이 그 역할을 하므로 필요 없다.
+ */
+:root[data-runtime="browser"] body {
   background-color: #d9d4cc;
   background-image:
     linear-gradient(45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%),
@@ -36,6 +48,19 @@ body {
     linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.06) 75%);
   background-size: 32px 32px;
   background-position: 0 0, 0 16px, 16px -16px, -16px 0;
+}
+
+/*
+ * 개발 패널은 브라우저에서만 띄운다.
+ *
+ * 창은 340x340 이고 HUD 가 그걸 꽉 채운다. 패널이 붙을 자리가 없어서
+ * 창 밖으로 삐져나간다. 브라우저 탭은 같은 Vite 서버를 보고 있으니
+ * 패널이 필요하면 그쪽에서 만지면 된다.
+ */
+:root[data-runtime="tauri"] .dev-usage,
+:root[data-runtime="tauri"] .dev-monitor,
+:root[data-runtime="tauri"] .dev-zoom {
+  display: none;
 }
 
 .hud {
@@ -52,6 +77,18 @@ body {
   /* 캐릭터를 드래그로 집어 옮기는 창이므로 텍스트 선택은 막는다. */
   user-select: none;
   -webkit-user-select: none;
+}
+
+/*
+ * Tauri 창에서는 창 자체가 HUD 다.
+ *
+ * 트레이 메뉴에서 크기를 바꾸므로 고정 px 로 둘 수 없다. 뷰포트를 채우면
+ * 캔버스도 그만큼 늘어나는데, 창 한 변이 늘 85 의 정수배라 확대 배율이
+ * 저절로 정수가 되어 픽셀이 뭉개지지 않는다.
+ */
+:root[data-runtime="tauri"] .hud {
+  width: 100vw;
+  height: 100vh;
 }
 
 /* 캔버스가 창 전체를 채우므로 타이틀바는 그 위에 떠 있다. */
@@ -114,6 +151,14 @@ body {
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
+
+  /*
+   * 캔버스가 창 전체를 덮는데, Tauri 는 마우스를 누른 바로 그 요소에
+   * data-tauri-drag-region 이 있는지만 본다. 캔버스에는 그 속성이 없으므로
+   * 이걸 끄지 않으면 창의 거의 전 면적에서 드래그가 먹지 않는다.
+   * 캔버스는 그리기만 하고 입력을 받지 않아 꺼도 잃는 것이 없다.
+   */
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------- 잔여율 표시 */
