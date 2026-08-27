@@ -2,7 +2,7 @@
  * 씬 조합. 그리는 순서가 곧 레이어 순서다.
  *
  * 씬은 잔여율을 모른다. 궤도 위치와 연출 하나만 받는다.
- * 수관 크기와 물 높이도 연출이 정해서 넘겨주므로 여기서는 그리기만 한다.
+ * 잎 개수와 물 높이도 연출이 정해서 넘겨주므로 여기서는 그리기만 한다.
  */
 
 import { paletteAtOrbit } from "./palette";
@@ -15,7 +15,7 @@ import { drawPond } from "./pond";
 import { drawSprite, type Sprite } from "./sprite";
 import { HELD_LEAF_X, HELD_LEAF_Y, QUOKKA_Y, STATION_X } from "./layout";
 import { quokkaIdle } from "../sprites/quokka";
-import type { Choreography } from "../state/choreography";
+import { HOME_AT, POND_AT, TREE_AT, type Choreography } from "../state/choreography";
 import type { Frame } from "./loop";
 
 export { QUOKKA_HOME_X, QUOKKA_Y, QUOKKA_FOOT_ROW } from "./layout";
@@ -52,9 +52,20 @@ export function drawScene(
   }
 }
 
-/** 연출이 정한 지점을 화면 x 좌표로 옮긴다. */
+/**
+ * 연출이 정한 지점 좌표를 화면 x 로 옮긴다.
+ *
+ * 지점 사이 간격이 고르지 않으므로(나무~가운데 16px, 가운데~연못 22px)
+ * 구간마다 따로 보간한다.
+ */
 export function quokkaXOf(choreography: Choreography): number {
-  const from = STATION_X[choreography.from];
-  const to = STATION_X[choreography.to];
-  return Math.round(from + (to - from) * choreography.travel);
+  const at = Math.max(TREE_AT, Math.min(POND_AT, choreography.position));
+
+  if (at <= HOME_AT) {
+    const t = (at - TREE_AT) / (HOME_AT - TREE_AT);
+    return Math.round(STATION_X.tree + (STATION_X.home - STATION_X.tree) * t);
+  }
+
+  const t = (at - HOME_AT) / (POND_AT - HOME_AT);
+  return Math.round(STATION_X.home + (STATION_X.pond - STATION_X.home) * t);
 }
