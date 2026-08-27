@@ -66,11 +66,44 @@ npm create tauri-app@latest -- --tauri-version 2
 ## 자주 쓰는 명령
 
 ```powershell
-npm run tauri dev      # 개발 모드 (핫 리로드)
-npm run tauri build    # 배포 빌드
-cargo fmt              # src-tauri 에서 Rust 포맷
-cargo clippy           # Rust 린트
+npm run tauri dev                  # 개발 모드 (핫 리로드)
+npm run tauri build -- --no-bundle # exe 만 (2분)
+npm run tauri build                # 설치 패키지까지 (6분 반)
+cargo fmt                          # src-tauri 에서 Rust 포맷
+cargo clippy                       # Rust 린트
 ```
+
+---
+
+## 빌드 규칙 (Windows)
+
+**코드를 고쳤으면 exe 를 최신으로 갱신한다.** 화면으로 확인하는 것이 실제로 방금 고친 코드여야 한다.
+
+### 1. 먼저 실행 중인 프로세스를 죽인다
+
+```powershell
+taskkill /F /IM quokka-hud.exe
+```
+
+떠 있으면 파일이 잠겨 있어 빌드가 `os error 5 (액세스가 거부되었습니다)` 로 깨진다. 더 나쁜 경우는 빌드가 조용히 성공한 줄 알고 예전 exe 를 계속 들여다보는 것이다.
+
+### 2. `npm run tauri build -- --no-bundle` 로 빌드한다
+
+**`cargo build --release` 를 쓰지 않는다.** tauri CLI 를 거치지 않으면 `frontendDist` 대신 `devUrl` 이 심긴다. 그렇게 나온 exe 는 창에 **"localhost 연결을 거부했습니다"** 를 띄운다. Rust 는 멀쩡히 컴파일되므로 실행해 보기 전까지 알 수 없다.
+
+`--no-bundle` 은 MSI · NSIS 생성을 건너뛴다. 설치 패키지가 필요할 때만 뺀다.
+
+### 3. 타임스탬프로 갱신을 확인하고 보고한다
+
+```powershell
+ls src-tauri/target/release/quokka-hud.exe
+```
+
+빌드가 "성공" 했는데 파일 시각이 그대로인 경우가 있다. 눈으로 확인한 값을 보고한다.
+
+### 4. 완료는 로그를 직접 폴링해서 확인한다
+
+백그라운드 작업 완료 알림을 기다리지 않는다. 이 환경에서 도착하지 않는다. 로그를 몇 초 간격으로 tail 하다가 완료 표시(`Built application at`)가 보이면 보고한다.
 
 ---
 
