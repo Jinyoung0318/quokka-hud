@@ -117,6 +117,25 @@ export const MOON_CRATER = rgb(0xb9, 0xc4, 0xd8);
 export const STAR = rgb(0xff, 0xff, 0xff);
 export const STAR_DIM = rgb(0xb8, 0xc4, 0xe0);
 
+/**
+ * 잔여율 숫자.
+ *
+ * 단계별 팔레트에 넣지 않는다. 하늘이 아침이든 밤이든 똑같이 읽혀야 하는데,
+ * 배경을 따라 색이 바뀌면 어느 시간대에서는 반드시 묻힌다.
+ * 밝은 글자에 어두운 외곽선을 둘러 배경과 무관하게 떼어낸다.
+ */
+/**
+ * 밝기를 네 단계로 나눈다. 잔여율 숫자가 가장 밝고, 라벨과 둘째 줄이
+ * 차례로 죽는다. 라벨까지 같은 밝기면 숫자를 찾는 데 시간이 걸린다.
+ */
+export const READOUT_VALUE = rgb(0xfb, 0xf8, 0xf0);
+export const READOUT_LABEL = rgb(0xb5, 0xac, 0x9a);
+export const READOUT_SUB_VALUE = rgb(0x9e, 0x97, 0x88);
+export const READOUT_SUB_LABEL = rgb(0x82, 0x7b, 0x6e);
+export const READOUT_OUTLINE = rgb(0x1a, 0x16, 0x12);
+/** 직전 값을 들고 있다는 표시. 개발 패널의 stale 색과 맞춘다. */
+export const READOUT_STALE = rgb(0xe0, 0xa2, 0x4e);
+
 export function rgbToCss({ r, g, b }: Rgb): string {
   return `rgb(${r} ${g} ${b})`;
 }

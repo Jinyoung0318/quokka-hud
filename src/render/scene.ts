@@ -13,6 +13,7 @@ import { drawGrass } from "./grass";
 import { drawLeaf, drawTree } from "./tree";
 import { drawPond } from "./pond";
 import { drawSprite, type Sprite } from "./sprite";
+import { drawReadout, type UsageReadout } from "./readout";
 import { HELD_LEAF_X, HELD_LEAF_Y, QUOKKA_Y, STATION_X } from "./layout";
 import { quokkaIdle } from "../sprites/quokka";
 import { HOME_AT, POND_AT, TREE_AT, type Choreography } from "../state/choreography";
@@ -26,6 +27,7 @@ export function drawScene(
   choreography: Choreography,
   frame: Frame,
   quokka: Sprite = quokkaIdle,
+  readout: UsageReadout | null = null,
 ): void {
   const palette = paletteAtOrbit(orbit);
 
@@ -50,6 +52,9 @@ export function drawScene(
   if (choreography.heldLeaf) {
     drawLeaf(ctx, palette, quokkaX + HELD_LEAF_X, QUOKKA_Y + HELD_LEAF_Y);
   }
+
+  // 숫자는 맨 마지막. 무엇에도 가리지 않아야 한다.
+  drawReadout(ctx, readout);
 }
 
 /**

@@ -115,3 +115,96 @@ body {
   height: 100%;
   image-rendering: pixelated;
 }
+
+/* ---------------------------------------------------------------- 잔여율 표시 */
+
+/*
+ * 캔버스 위에 겹치는 숫자.
+ *
+ * 왼쪽 아래에 붙인다. 해가 왼쪽에서 떠서 가운데로 올라가는 궤도라 위쪽에
+ * 두면 반드시 부딪히고, 나무 수관도 왼쪽 위를 차지한다. 지평선 아래 땅은
+ * 오른쪽에 연못만 있고 왼쪽은 비어 있어서 무엇과도 겹치지 않는다.
+ *
+ * pointer-events 를 꺼야 이 위를 끌어도 창이 따라온다. 끄지 않으면
+ * 숫자가 덮은 만큼 드래그 영역이 사라진다.
+ */
+.readout {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1;
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  /* 숫자가 바뀔 때 자릿수 폭이 흔들리지 않게. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+
+  /*
+   * 배경이 아침에는 밝고 밤에는 어둡다. 한 가지 색으로는 어느 쪽에서든
+   * 묻히므로 여덟 방향으로 어두운 테를 둘러 배경에서 떼어낸다.
+   */
+  text-shadow:
+    1px 0 0 rgba(12, 10, 8, 0.9),
+    -1px 0 0 rgba(12, 10, 8, 0.9),
+    0 1px 0 rgba(12, 10, 8, 0.9),
+    0 -1px 0 rgba(12, 10, 8, 0.9),
+    1px 1px 0 rgba(12, 10, 8, 0.9),
+    -1px -1px 0 rgba(12, 10, 8, 0.9),
+    1px -1px 0 rgba(12, 10, 8, 0.9),
+    -1px 1px 0 rgba(12, 10, 8, 0.9);
+}
+
+/* hidden 속성이 display: flex 에 지지 않도록. */
+.readout[hidden],
+.readout__line[hidden],
+.readout__stale[hidden] {
+  display: none;
+}
+
+.readout__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.readout__line--rate {
+  font-size: 14px;
+}
+
+.readout__line--sync {
+  font-size: 11px;
+}
+
+/* 라벨은 흐리게, 값은 밝게. 잔여율 숫자가 가장 먼저 눈에 들어와야 한다. */
+.readout__label {
+  color: rgba(242, 238, 228, 0.6);
+}
+
+.readout__value {
+  color: #fdfaf3;
+  font-weight: 600;
+}
+
+.readout__line--sync .readout__label {
+  color: rgba(242, 238, 228, 0.42);
+}
+
+.readout__line--sync .readout__value {
+  color: rgba(242, 238, 228, 0.66);
+  font-weight: 400;
+}
+
+/* 직전 값을 들고 있다는 표시. 글자가 아니라 도형이라 테두리로 두른다. */
+.readout__stale {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #e0a24e;
+  box-shadow: 0 0 0 1px rgba(12, 10, 8, 0.9);
+}

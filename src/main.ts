@@ -5,6 +5,8 @@ import { drawScene } from "./render/scene";
 import { SceneDirector } from "./state/director";
 import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
+import type { UsageReadout } from "./usageReadout";
+import { mountReadoutOverlay } from "./overlay/readoutOverlay";
 import { createUsageSource, setMockDraining, setSourceMode } from "./collector/source";
 import type { BrowserSourceMode } from "./collector/browserSource";
 import { startUsagePolling, POLL_INTERVAL_MS, type UsagePollerHandle } from "./collector/poller";
@@ -17,6 +19,7 @@ import {
   controllerFor,
   MOCK_POLL_INTERVAL_MS,
 } from "./dev/usageMonitor";
+import { mountReadoutToggle, type ReadoutMode } from "./dev/readoutToggle";
 
 /** 첫 조회가 도착하기 전까지 보여줄 값. */
 const INITIAL_REMAINING_PCT = 100;
@@ -30,7 +33,40 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   const ctx = createPixelCanvas(stage);
+
+  const readoutRoot = document.querySelector<HTMLElement>("[data-readout-root]");
+  if (!readoutRoot) {
+    throw new Error("[data-readout-root] 를 찾을 수 없습니다");
+  }
+  const overlay = mountReadoutOverlay(readoutRoot);
   const director = new SceneDirector(phaseIndexOf(INITIAL_REMAINING_PCT));
+
+  /**
+   * 화면 왼쪽 위에 띄울 숫자.
+   *
+   * 캐릭터는 스냅된 단계를 보여주지만 숫자는 원래 값을 그대로 보여준다.
+   * 화면을 잡고 있는 쪽의 값을 띄운다. 캐릭터와 숫자가 다른 값을 가리키면
+   * 무엇을 믿어야 할지 알 수 없다.
+   */
+  let readout: UsageReadout = {
+    remainingPct: INITIAL_REMAINING_PCT,
+    // 아직 조회한 적이 없다. 시각을 붙이면 거짓말이 된다.
+    updatedAt: null,
+    stale: false,
+  };
+
+  /**
+   * 숫자를 어디에 그릴지. 개발용 — 두 방식을 비교하려고 남겨둔 갈림길이다.
+   *
+   * 캔버스에 픽셀 폰트로 찍는 쪽은 3x5 글자를 4배로 키우면 소문자가 뭉개져
+   * 읽히지 않는다. 기본은 HTML 이다.
+   */
+  let readoutMode: ReadoutMode = "html";
+
+  /** 값이 바뀌거나 방식이 바뀔 때 화면에 반영한다. */
+  const syncReadout = () => {
+    overlay.update(readoutMode === "html" ? readout : null);
+  };
 
   /** 새 잔여율을 받았을 때의 처리. */
   const applyUsage = (remainingPct: number) => {
@@ -55,7 +91,15 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    drawScene(ctx, director.orbit, director.choreography, frame, quokkaIdle);
+    drawScene(
+      ctx,
+      director.orbit,
+      director.choreography,
+      frame,
+      quokkaIdle,
+      // 개발용 — 캔버스 방식일 때만 넘긴다.
+      readoutMode === "canvas" ? readout : null,
+    );
   });
 
   const source = createUsageSource();
@@ -76,6 +120,9 @@ window.addEventListener("DOMContentLoaded", () => {
       if (mockFlowing()) return;
       manualOverride = true;
       applyUsage(value);
+      // 조회에서 온 값이 아니므로 갱신 시각을 붙이지 않는다.
+      readout = { remainingPct: value, updatedAt: null, stale: false };
+      syncReadout();
       syncControl();
     },
     snap: snapRemaining,
@@ -123,6 +170,16 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   });
 
+  // 개발용
+  mountReadoutToggle({
+    initial: readoutMode,
+    onChange: (mode) => {
+      readoutMode = mode;
+      syncReadout();
+    },
+  });
+
+  syncReadout();
   syncControl(); // 개발용
 
   poller = startUsagePolling({
@@ -134,6 +191,12 @@ window.addEventListener("DOMContentLoaded", () => {
       monitor.update(snapshot, source.name); // 개발용
       if (controllerNow() !== "collector") return;
       applyUsage(snapshot.remainingPct);
+      readout = {
+        remainingPct: snapshot.remainingPct,
+        updatedAt: snapshot.fetchedAt,
+        stale: snapshot.stale,
+      };
+      syncReadout();
     },
   });
 });
