@@ -5,12 +5,14 @@ import { drawScene } from "./render/scene";
 import { SceneDirector } from "./state/director";
 import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
+import { createUsageSource } from "./collector/source";
+import { startUsagePolling } from "./collector/poller";
 
 // 개발용 도구. 제거할 때는 이 import 와 아래 mount 호출, zoomed 분기를 지운다.
 import { mountUsageSlider } from "./dev/usageSlider";
 import { drawZoomedSprite, mountSpriteZoomToggle } from "./dev/spriteZoom";
 
-/** 수집기가 붙기 전까지의 초기값. */
+/** 첫 조회가 도착하기 전까지 보여줄 값. */
 const INITIAL_REMAINING_PCT = 100;
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -24,10 +26,18 @@ window.addEventListener("DOMContentLoaded", () => {
   const ctx = createPixelCanvas(stage);
   const director = new SceneDirector(phaseIndexOf(INITIAL_REMAINING_PCT));
 
-  /** 새 잔여율을 받았을 때의 처리. 수집기가 붙으면 여기에 연결한다. */
+  /** 새 잔여율을 받았을 때의 처리. */
   const applyUsage = (remainingPct: number) => {
     director.setPhase(phaseIndexOf(remainingPct));
   };
+
+  /**
+   * 개발용 슬라이더를 한 번이라도 건드리면 그쪽이 화면을 잡는다.
+   *
+   * 폴링과 슬라이더가 같은 화면을 두고 다투면 손으로 맞춰놓은 값이
+   * 다음 조회에 되돌아가 버린다. 그래서 한쪽만 화면을 잡는다.
+   */
+  let manualOverride = false;
 
   let zoomed = false;
 
@@ -42,9 +52,22 @@ window.addEventListener("DOMContentLoaded", () => {
     drawScene(ctx, director.orbit, director.choreography, frame, quokkaIdle);
   });
 
+  const source = createUsageSource();
+
+  startUsagePolling({
+    source,
+    onSnapshot: (snapshot) => {
+      if (manualOverride) return;
+      applyUsage(snapshot.remainingPct);
+    },
+  });
+
   mountUsageSlider({
     initial: INITIAL_REMAINING_PCT,
-    onChange: applyUsage,
+    onChange: (value) => {
+      manualOverride = true;
+      applyUsage(value);
+    },
     snap: snapRemaining,
     phase: phaseOf,
   });
