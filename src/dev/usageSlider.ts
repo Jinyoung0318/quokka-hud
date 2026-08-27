@@ -100,22 +100,29 @@ export function mountUsageSlider(options: UsageSliderOptions): () => void {
   input.value = String(options.initial);
   input.setAttribute("aria-label", "잔여율");
 
-  const update = (raw: number) => {
+  /**
+   * 표시를 갱신한다.
+   *
+   * fromUser 가 참일 때만 onChange 를 부른다. 붙일 때의 초기 표시까지
+   * 사용자 조작으로 세면, 폴링이 들어오기도 전에 슬라이더가 화면을
+   * 붙잡아 버린다.
+   */
+  const update = (raw: number, fromUser: boolean) => {
     value.textContent = `${raw.toFixed(1)}%`;
     snap.textContent = `→ ${options.snap(raw)}`;
     phase.textContent = options.phase(raw);
-    options.onChange(raw);
+    if (fromUser) options.onChange(raw);
   };
 
   input.addEventListener("input", () => {
-    update(Number(input.value));
+    update(Number(input.value), true);
   });
 
   row.append(label, value, snap, phase);
   root.append(row, input);
   document.body.appendChild(root);
 
-  update(options.initial);
+  update(options.initial, false);
 
   return () => {
     root.remove();
