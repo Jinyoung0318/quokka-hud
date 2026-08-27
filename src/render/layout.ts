@@ -10,18 +10,6 @@ import { HORIZON_Y, LOGICAL_SIZE } from "./canvas";
 import { QUOKKA_SIZE } from "../sprites/quokka";
 import type { Station } from "../state/choreography";
 
-// ---------------------------------------------------------------- 타이틀바
-
-/**
- * 타이틀바 버튼이 덮는 자리. CSS 로 창 오른쪽 위에 떠 있다.
- * (버튼 24px 두 개 + 사이 2 + 좌우 여백 4 = 58px, 높이 28px, 화면 배율 4)
- *
- * 캔버스에 무언가를 얹을 때 이 범위를 피해야 버튼에 가리지 않는다.
- */
-export const TITLEBAR_LEFT_X = LOGICAL_SIZE - 15;
-/** 이 줄부터는 버튼 아래라 가로로 끝까지 써도 된다. */
-export const TITLEBAR_BOTTOM_Y = 7;
-
 // ---------------------------------------------------------------- 쿼카
 
 /**
@@ -65,12 +53,7 @@ export const BRANCHES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> =
   [[11, 36], [12, 35], [13, 34]],
 ];
 
-/**
- * 수관의 중심. 줄기 위쪽에 얹힌다.
- *
- * 왼쪽 위에 잔여율 숫자가 두 줄로 들어가서, 수관이 더 올라가면 둘째 줄과
- * 겹친다. 숫자를 위로 바짝 올리고 수관은 한 칸 내려 서로 닿지 않게 뒀다.
- */
+/** 수관의 중심. 줄기 위쪽에 얹힌다. */
 export const CANOPY_CENTER_X = 9;
 export const CANOPY_CENTER_Y = 26;
 

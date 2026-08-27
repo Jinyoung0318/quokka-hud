@@ -19,7 +19,6 @@ import {
   controllerFor,
   MOCK_POLL_INTERVAL_MS,
 } from "./dev/usageMonitor";
-import { mountReadoutToggle, type ReadoutMode } from "./dev/readoutToggle";
 
 /** 첫 조회가 도착하기 전까지 보여줄 값. */
 const INITIAL_REMAINING_PCT = 100;
@@ -55,17 +54,9 @@ window.addEventListener("DOMContentLoaded", () => {
     stale: false,
   };
 
-  /**
-   * 숫자를 어디에 그릴지. 개발용 — 두 방식을 비교하려고 남겨둔 갈림길이다.
-   *
-   * 캔버스에 픽셀 폰트로 찍는 쪽은 3x5 글자를 4배로 키우면 소문자가 뭉개져
-   * 읽히지 않는다. 기본은 HTML 이다.
-   */
-  let readoutMode: ReadoutMode = "html";
-
-  /** 값이 바뀌거나 방식이 바뀔 때 화면에 반영한다. */
+  /** 값이 바뀔 때마다 캔버스 위 오버레이에 반영한다. */
   const syncReadout = () => {
-    overlay.update(readoutMode === "html" ? readout : null);
+    overlay.update(readout);
   };
 
   /** 새 잔여율을 받았을 때의 처리. */
@@ -91,15 +82,7 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    drawScene(
-      ctx,
-      director.orbit,
-      director.choreography,
-      frame,
-      quokkaIdle,
-      // 개발용 — 캔버스 방식일 때만 넘긴다.
-      readoutMode === "canvas" ? readout : null,
-    );
+    drawScene(ctx, director.orbit, director.choreography, frame, quokkaIdle);
   });
 
   const source = createUsageSource();
@@ -167,15 +150,6 @@ window.addEventListener("DOMContentLoaded", () => {
     initial: zoomed,
     onChange: (value) => {
       zoomed = value;
-    },
-  });
-
-  // 개발용
-  mountReadoutToggle({
-    initial: readoutMode,
-    onChange: (mode) => {
-      readoutMode = mode;
-      syncReadout();
     },
   });
 

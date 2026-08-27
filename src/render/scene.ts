@@ -2,6 +2,8 @@
  * 씬 조합. 그리는 순서가 곧 레이어 순서다.
  *
  * 씬은 잔여율을 모른다. 궤도 위치와 연출 하나만 받는다.
+ * 잔여율 숫자는 캔버스가 아니라 그 위에 겹치는 HTML 이 맡는다
+ * (overlay/readoutOverlay.ts).
  * 잎 개수와 물 높이도 연출이 정해서 넘겨주므로 여기서는 그리기만 한다.
  */
 
@@ -13,7 +15,6 @@ import { drawGrass } from "./grass";
 import { drawLeaf, drawTree } from "./tree";
 import { drawPond } from "./pond";
 import { drawSprite, type Sprite } from "./sprite";
-import { drawReadout, type UsageReadout } from "./readout";
 import { HELD_LEAF_X, HELD_LEAF_Y, QUOKKA_Y, STATION_X } from "./layout";
 import { quokkaIdle } from "../sprites/quokka";
 import { HOME_AT, POND_AT, TREE_AT, type Choreography } from "../state/choreography";
@@ -27,7 +28,6 @@ export function drawScene(
   choreography: Choreography,
   frame: Frame,
   quokka: Sprite = quokkaIdle,
-  readout: UsageReadout | null = null,
 ): void {
   const palette = paletteAtOrbit(orbit);
 
@@ -52,9 +52,6 @@ export function drawScene(
   if (choreography.heldLeaf) {
     drawLeaf(ctx, palette, quokkaX + HELD_LEAF_X, QUOKKA_Y + HELD_LEAF_Y);
   }
-
-  // 숫자는 맨 마지막. 무엇에도 가리지 않아야 한다.
-  drawReadout(ctx, readout);
 }
 
 /**

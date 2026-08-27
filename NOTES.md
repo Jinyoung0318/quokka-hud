@@ -36,3 +36,4 @@ Notion에 반영이 끝난 항목은 아래 목록에서 지운다. 이 파일�
 - [2026-08-27] Tauri 전까지 브라우저에서 실제 값을 보려고 Vite 개발 서버에 /__dev/usage 엔드포인트를 둠. Tauri로 가면 Rust가 대신하므로 제거 대상
 - [2026-08-27] `claude -p "/usage"` 호출은 사용량에 카운트되지 않음 확인 (requests 322 → 322). 5분 폴링 안전
 - [2026-08-27] Windows에서 claude는 claude.cmd라 shell: true 필요. macOS/Linux는 불필요
+- [2026-08-27] 캔버스 안 픽셀 폰트는 4배 확대 시 뭉개져 판독 불가. HTML 오버레이 + text-shadow 외곽선으로 확정. 위치는 좌하단(해 궤도와 충돌 회피)
