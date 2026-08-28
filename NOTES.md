@@ -57,3 +57,4 @@ Notion에 반영이 끝난 항목은 아래 목록에서 지운다. 이 파일�
 - [2026-08-27] 타이틀바 배율 버튼은 data-window-action 이 아니라 data-titlebar-action 을 쓴다. 앞엣것은 bindWindowControls() 가 훑는 속성이라, 같이 쓰면 매 시작마다 "알 수 없는 action" 경고가 찍힌다
 - [2026-08-27] 배율 버튼에 data-tauri-drag-region 을 걸지 않는다. 걸면 누르는 순간 창 드래그로 잡혀 클릭이 먹지 않는다. Tauri 2.11.5 는 BUTTON 을 클릭 요소로 보고 알아서 막아주지만, 속성을 명시적으로 안 거는 쪽이 안전하다
 - [2026-08-28] app_config_dir()이 실패하면 진단 로그가 조용히 사라짐. 실제로 그 상황이면 설정도 못 읽는 상태라 우선순위 낮음
+- [2026-08-28] Cargo가 icon.ico 변경을 리빌드 트리거로 추적하지 않음. 아이콘을 바꾸면 cargo clean -p quokka-hud 후 빌드해야 exe에 반영됨. exe에서 아이콘을 추출해 대조하는 것이 확실한 검증 방법
