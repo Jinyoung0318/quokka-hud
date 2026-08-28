@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "quokka-hud",
-        "width": 340,
-        "height": 340,
+        "width": 170,
+        "height": 170,
         "resizable": false,
         "decorations": false,
         "transparent": true,

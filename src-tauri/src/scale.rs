@@ -9,12 +9,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use crate::{settings, tray};
 
 /// 고를 수 있는 배율과 트레이 메뉴에 보일 이름. 순환 순서이기도 하다.
-pub const CHOICES: [(u32, &str); 4] = [
-    (3, "작게"),
-    (4, "보통"),
-    (5, "크게"),
-    (6, "아주 크게"),
-];
+pub const CHOICES: [(u32, &str); 3] = [(1, "작게"), (2, "보통"), (3, "크게")];
 
 /// 배율이 바뀌었음을 프론트에 알리는 이벤트.
 /// 트레이에서 바꿔도 타이틀바 버튼 라벨이 따라오게 하려고 쓴다.
@@ -68,20 +63,28 @@ mod tests {
 
     #[test]
     fn 다음_배율은_한_바퀴_돈다() {
-        assert_eq!(next(3), 4);
-        assert_eq!(next(4), 5);
-        assert_eq!(next(5), 6);
+        assert_eq!(next(1), 2);
+        assert_eq!(next(2), 3);
         // 마지막에서 처음으로.
-        assert_eq!(next(6), 3);
+        assert_eq!(next(3), 1);
     }
 
     #[test]
-    fn 네_번_누르면_제자리로() {
-        let mut scale = 4;
+    fn 세_번_누르면_제자리로() {
+        let mut scale = 2;
         for _ in 0..CHOICES.len() {
             scale = next(scale);
         }
-        assert_eq!(scale, 4);
+        assert_eq!(scale, 2);
+    }
+
+    /// 설정 파일에 예전 배율이 남아 있어도 순환이 멈추지 않아야 한다.
+    /// position() 이 못 찾으면 0 번으로 떨어지므로 첫 배율의 다음이 나온다.
+    #[test]
+    fn 없어진_배율에서도_순환이_이어진다() {
+        for old in [4, 5, 6] {
+            assert_eq!(next(old), CHOICES[1].0, "{old} 배에서 멈췄다");
+        }
     }
 
     #[test]

@@ -9,12 +9,12 @@
   </head>
 
   <body>
-    <!-- 340x340 고정. 실제 창에서는 이 요소가 창 전체를 채운다. -->
+    <!-- 논리 85x85 의 배율배. 실제 창에서는 이 요소가 창 전체를 채운다. -->
     <main class="hud" data-tauri-drag-region>
-      <!-- 캔버스가 340x340 을 다 쓰므로 타이틀바는 그 위에 얹는다. -->
+      <!-- 캔버스가 창 전체를 쓰므로 타이틀바는 그 위에 얹는다. -->
       <div class="titlebar" data-tauri-drag-region>
         <!--
-          배율 버튼. 누를 때마다 3x -> 4x -> 5x -> 6x -> 3x 로 돈다.
+          배율 버튼. 누를 때마다 1x -> 2x -> 3x -> 1x 로 돈다.
           라벨은 src/titlebar/scaleButton.ts 가 채운다.
 
           버튼에는 data-tauri-drag-region 을 걸지 않는다. 걸면 누르는 순간

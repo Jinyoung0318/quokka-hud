@@ -18,9 +18,22 @@ use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, Runtime, WebviewW
 /// 그래서 자유 리사이즈 대신 배율을 고르게 한다.
 pub const LOGICAL_SIZE: u32 = 85;
 
-pub const MIN_SCALE: u32 = 3;
-pub const MAX_SCALE: u32 = 6;
-pub const DEFAULT_SCALE: u32 = 4;
+pub const MIN_SCALE: u32 = 1;
+pub const MAX_SCALE: u32 = 3;
+pub const DEFAULT_SCALE: u32 = 2;
+
+/// 고를 수 없는 배율을 기본값으로 되돌린다.
+///
+/// `clamp` 을 쓰지 않는다. 예전 버전은 4~6배를 저장했는데, 접기만 하면 그 값들이
+/// 전부 최대 배율인 3배가 되어 쓰던 것보다 오히려 큰 창이 뜬다. 범위 밖이면
+/// 무슨 값이었든 기본값으로 보낸다.
+fn sanitize_scale(scale: u32) -> u32 {
+    if (MIN_SCALE..=MAX_SCALE).contains(&scale) {
+        scale
+    } else {
+        DEFAULT_SCALE
+    }
+}
 
 /// 위치를 얼마나 자주 파일에 쓸지. 드래그 중에는 Moved 가 초당 수십 번 온다.
 const WRITE_THROTTLE: Duration = Duration::from_secs(1);
@@ -48,7 +61,7 @@ impl Settings {
     /// 파일에서 읽은 값이 범위를 벗어났으면 되돌린다.
     /// 손으로 고칠 수 있는 파일이라 아무 값이나 들어올 수 있다.
     fn sanitized(mut self) -> Self {
-        self.scale = self.scale.clamp(MIN_SCALE, MAX_SCALE);
+        self.scale = sanitize_scale(self.scale);
         self
     }
 }
@@ -145,7 +158,7 @@ pub fn set_scale<R: Runtime>(app: &AppHandle<R>, scale: u32) -> Settings {
         let Ok(mut inner) = state.inner.lock() else {
             return Settings::default();
         };
-        inner.settings.scale = scale.clamp(MIN_SCALE, MAX_SCALE);
+        inner.settings.scale = sanitize_scale(scale);
         inner.written_at = Instant::now();
         inner.dirty = false;
         inner.settings
@@ -242,4 +255,38 @@ fn position_is_visible<R: Runtime>(window: &WebviewWindow<R>, x: i32, y: i32) ->
         let bottom = origin.y + size.height as i32;
         x >= origin.x && x < right && y >= origin.y && y < bottom
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 없어진_배율은_기본값으로_돌아간다() {
+        // 4~6배를 저장해 둔 예전 설정 파일. 접으면 전부 3배가 되어버린다.
+        for old in [4, 5, 6] {
+            assert_eq!(sanitize_scale(old), DEFAULT_SCALE, "{old} 배 보정이 틀렸다");
+        }
+    }
+
+    #[test]
+    fn 고를_수_있는_배율은_그대로_둔다() {
+        for scale in MIN_SCALE..=MAX_SCALE {
+            assert_eq!(sanitize_scale(scale), scale);
+        }
+    }
+
+    #[test]
+    fn 말도_안_되는_값도_기본값으로() {
+        for bad in [0, 99, u32::MAX] {
+            assert_eq!(sanitize_scale(bad), DEFAULT_SCALE);
+        }
+    }
+
+    #[test]
+    fn 창_크기는_배율의_정수배() {
+        assert_eq!(window_size(1), 85);
+        assert_eq!(window_size(2), 170);
+        assert_eq!(window_size(3), 255);
+    }
 }

@@ -1,10 +1,38 @@
 :root {
-  /* 브라우저에서 미리 볼 때의 크기. 창에서는 아래 data-runtime 규칙이 이긴다. */
-  --hud-size: 340px;
-  --hud-radius: 12px;
+  /*
+   * 창 배율 1 · 2 · 3. src/titlebar/scaleButton.ts 가 실제 배율로 덮어쓴다.
+   * 여기 적은 값은 그 전 한 프레임에만 쓰이는 기본값이라 DEFAULT_SCALE 과 맞춘다.
+   */
+  --ui-scale: 2;
+
+  /*
+   * 브라우저에서 미리 볼 때의 크기. 창에서는 아래 data-runtime 규칙이 이긴다.
+   * 논리 해상도 85 의 정수배라 창에서 뜰 때와 같은 크기로 보인다.
+   */
+  --hud-size: calc(85px * var(--ui-scale));
+  --hud-radius: calc(4px * var(--ui-scale));
   --hud-bg: rgba(20, 20, 20, 0.75);
   --hud-fg: #f2f2f2;
-  --titlebar-height: 28px;
+
+  /*
+   * 타이틀바와 숫자 표시 크기는 배율을 따라간다. 고정 px 로 두면 큰 창에 맞춰
+   * 잡은 크기가 작은 창을 다 먹는다. 24px 버튼 세 개는 255px 창에서 4분의 1
+   * 이지만 85px 창에서는 폭의 절반이 넘는다.
+   *
+   * 다만 끝까지 비례시키지는 않는다. 그러면 2배에서 글자가 7px, 버튼이 12px 이
+   * 되어 읽지도 누르지도 못한다. 비례시키되 읽을 수 있는 하한에서 멈춘다.
+   * max() 의 두 값 중 작은 배율에서는 하한이, 3배에서는 비례값이 이긴다.
+   *
+   * 하한이 걸려도 소득은 크다. 2배 창의 버튼 세 줄이 폭의 47% 에서 27% 로 준다.
+   * 읽히지 않는 글자는 자리를 덜 차지해도 쓸모가 없어서 이쪽을 택했다.
+   */
+  --ui-button: max(14px, calc(6px * var(--ui-scale)));
+  --ui-button-glyph: max(9px, calc(3.5px * var(--ui-scale)));
+  --ui-gap: calc(1px * var(--ui-scale));
+  --titlebar-height: max(16px, calc(7px * var(--ui-scale)));
+  --readout-inset: calc(2px * var(--ui-scale));
+  --readout-usage: max(10px, calc(3.6px * var(--ui-scale)));
+  --readout-sync: max(8px, calc(2.8px * var(--ui-scale)));
 
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-synthesis: none;
@@ -53,7 +81,7 @@ body {
 /*
  * 개발 패널은 브라우저에서만 띄운다.
  *
- * 창은 340x340 이고 HUD 가 그걸 꽉 채운다. 패널이 붙을 자리가 없어서
+ * 창은 크게 잡아도 255x255 이고 HUD 가 그걸 꽉 채운다. 패널이 붙을 자리가 없어서
  * 창 밖으로 삐져나간다. 브라우저 탭은 같은 Vite 서버를 보고 있으니
  * 패널이 필요하면 그쪽에서 만지면 된다.
  */
@@ -103,7 +131,7 @@ body {
   z-index: 1;
 
   height: var(--titlebar-height);
-  padding: 0 4px;
+  padding: 0 var(--ui-gap);
 
   display: flex;
   align-items: center;
@@ -113,15 +141,15 @@ body {
 .titlebar__group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--ui-gap);
 }
 
 .titlebar__button {
-  width: 24px;
-  height: 24px;
+  width: var(--ui-button);
+  height: var(--ui-button);
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--ui-button) / 4);
 
   display: grid;
   place-items: center;
@@ -129,7 +157,7 @@ body {
   background-color: rgba(20, 20, 20, 0.35);
   color: rgba(242, 242, 242, 0.75);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--ui-button-glyph);
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
@@ -150,15 +178,15 @@ body {
   color: #ffffff;
 }
 
-/* 배율은 "4x" 라 아이콘 하나보다 넓다. 폭을 글자에 맞춘다. */
+/* 배율은 "2x" 라 아이콘 하나보다 넓다. 폭을 글자에 맞춘다. */
 .titlebar__button--scale {
   width: auto;
-  min-width: 24px;
-  padding: 0 7px;
-  font-size: 12px;
+  min-width: var(--ui-button);
+  padding: 0 calc(var(--ui-button) / 3.5);
+  font-size: calc(var(--ui-button-glyph) * 0.86);
   font-weight: 600;
   letter-spacing: 0.02em;
-  /* 3x 와 4x 의 폭이 달라 버튼이 들썩이지 않게. */
+  /* 1x 와 2x 의 폭이 달라 버튼이 들썩이지 않게. */
   font-variant-numeric: tabular-nums;
 }
 
@@ -167,7 +195,7 @@ body {
   height: 100%;
 }
 
-/* 논리 85x85 를 4배로 확대한다. 확대 시 보간하지 않는다. */
+/* 논리 85x85 를 배율만큼 확대한다. 확대 시 보간하지 않는다. */
 .hud__canvas {
   display: block;
   width: 100%;
@@ -197,14 +225,14 @@ body {
  */
 .readout {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
+  bottom: var(--readout-inset);
+  left: var(--readout-inset);
   z-index: 1;
   pointer-events: none;
 
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: calc(var(--ui-scale) * 0.5px);
 
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   /* 숫자가 바뀔 때 자릿수 폭이 흔들리지 않게. */
@@ -236,16 +264,16 @@ body {
 .readout__line {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--ui-scale) * 1.5px);
   white-space: nowrap;
 }
 
 .readout__line--usage {
-  font-size: 14px;
+  font-size: var(--readout-usage);
 }
 
 .readout__line--sync {
-  font-size: 11px;
+  font-size: var(--readout-sync);
 }
 
 /* 라벨은 흐리게, 값은 밝게. 숫자가 가장 먼저 눈에 들어와야 한다. */
@@ -269,8 +297,9 @@ body {
 
 /* 직전 값을 들고 있다는 표시. 글자가 아니라 도형이라 테두리로 두른다. */
 .readout__stale {
-  width: 5px;
-  height: 5px;
+  /* 옆 글자를 따라간다. 글자만 줄고 점이 그대로면 점이 값보다 커 보인다. */
+  width: calc(var(--readout-usage) * 0.4);
+  height: calc(var(--readout-usage) * 0.4);
   border-radius: 50%;
   background-color: #e0a24e;
   box-shadow: 0 0 0 1px rgba(12, 10, 8, 0.9);
