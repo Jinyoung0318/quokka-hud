@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code 로컬 설정. 허용한 명령이 그대로 들어 있어 사용자명 경로가 남는다.
+.claude/
