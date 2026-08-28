@@ -31,7 +31,7 @@ export function createDevServerSource(): UsageSource {
       } catch (error) {
         // 개발 서버가 없거나 플러그인이 안 붙은 경우.
         console.warn("[collector] 개발 서버 호출 실패 ·", messageOf(error));
-        return failed("unknown", `개발 서버 호출 실패 · \${messageOf(error)}`);
+        return failed("unknown", `개발 서버 호출 실패 · ${messageOf(error)}`);
       }
 
       if (!response.ok) {
@@ -39,7 +39,7 @@ export function createDevServerSource(): UsageSource {
           `[collector] 개발 서버가 ${response.status} 를 돌려줌 ·`,
           await errorTextOf(response),
         );
-        return failed("unknown", `개발 서버가 \${response.status} 를 돌려줌`);
+        return failed("unknown", `개발 서버가 ${response.status} 를 돌려줌`);
       }
 
       let body: unknown;
@@ -47,7 +47,7 @@ export function createDevServerSource(): UsageSource {
         body = await response.json();
       } catch (error) {
         console.warn("[collector] 응답을 읽지 못함 ·", messageOf(error));
-        return failed("unexpected-output", `응답을 읽지 못함 · \${messageOf(error)}`);
+        return failed("unexpected-output", `응답을 읽지 못함 · ${messageOf(error)}`);
       }
 
       if (!isSnapshot(body)) {

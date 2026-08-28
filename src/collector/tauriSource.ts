@@ -35,7 +35,7 @@ export function createTauriSource(): UsageSource {
       } catch (error) {
         // Rust 가 Err 를 돌려주면 여기로 온다. 원인 분류가 이미 붙어 있다.
         const { kind, message } = collectorErrorOf(error);
-        console.warn(`[collector] Rust 수집기 실패 (\${kind}) ·`, message);
+        console.warn(`[collector] Rust 수집기 실패 (${kind}) ·`, message);
         return failed(kind, message);
       }
 
@@ -45,7 +45,7 @@ export function createTauriSource(): UsageSource {
         // 종료 코드가 0 이고 stdout 도 비어 있지 않아서 Rust 는 성공으로 본다.
         const detail = preview(output);
         console.warn("[collector] 출력을 읽지 못함 ·", detail);
-        return failed("unexpected-output", `사용량 줄을 찾지 못했습니다 · \${detail}`);
+        return failed("unexpected-output", `사용량 줄을 찾지 못했습니다 · ${detail}`);
       }
       return fetched(snapshot);
     },
