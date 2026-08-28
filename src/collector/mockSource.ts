@@ -11,8 +11,7 @@
  * 손잡이만 내놓는다. dev 폴더를 통째로 지워도 이 파일은 고정값 수집기로 남는다.
  */
 
-import type { UsageSnapshot } from "../snapshot";
-import type { UsageSource } from "./source";
+import { fetched, type UsageFetchResult, type UsageSource } from "./source";
 
 /** 시작 잔여율. 흐름을 끄면 계속 이 값이다. */
 export const MOCK_START_PCT = 100;
@@ -63,7 +62,7 @@ export function createMockSource(startPct: number = MOCK_START_PCT): MockUsageSo
       measuredAt = null;
     },
 
-    async fetch(now = new Date()): Promise<UsageSnapshot> {
+    async fetch(now = new Date()): Promise<UsageFetchResult> {
       const at = now.getTime();
 
       if (draining && measuredAt !== null) {
@@ -81,7 +80,8 @@ export function createMockSource(startPct: number = MOCK_START_PCT): MockUsageSo
 
       measuredAt = at;
 
-      return {
+      // 목은 실패하지 않는다. 개발용이라 언제나 값을 준다.
+      return fetched({
         remainingPct: round1(clampPct(remaining)),
         weeklyRemainingPct: round1(clampPct(weekly)),
         resetAt: new Date(at + SESSION_WINDOW_MS).toISOString(),
@@ -89,7 +89,7 @@ export function createMockSource(startPct: number = MOCK_START_PCT): MockUsageSo
         model: null,
         fetchedAt: now.toISOString(),
         stale: false,
-      };
+      });
     },
   };
 }

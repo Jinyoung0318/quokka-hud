@@ -12,9 +12,14 @@
  * 빌드가 깨진다. 실제로 부르는 것은 Node 에서뿐이다.
  */
 
-import type { UsageSnapshot } from "../snapshot";
 import { parseUsage } from "./parseUsage";
-import type { UsageSource } from "./source";
+import {
+  failed,
+  fetched,
+  type UsageFailureKind,
+  type UsageFetchResult,
+  type UsageSource,
+} from "./source";
 
 /** 실행할 명령. */
 export const CLI_COMMAND = "claude";
@@ -45,25 +50,38 @@ interface OsModule {
   tmpdir(): string;
 }
 
+/**
+ * Node 쪽은 Rust 처럼 원인이 구조화되어 오지 않는다. 메시지로 가른다.
+ * 개발 서버 전용 경로라 이 정도면 충분하다. 창에서 쓰는 길은 tauriSource 다.
+ */
+function kindOf(message: string): UsageFailureKind {
+  if (message.includes("ENOENT") || message.includes("not recognized")) return "cli-not-found";
+  if (message.includes("안에 끝나지 않아")) return "timeout";
+  return "unknown";
+}
+
 export function createClaudeCliSource(): UsageSource {
   return {
     name: "claude-cli",
 
-    async fetch(now = new Date()): Promise<UsageSnapshot | null> {
+    async fetch(now = new Date()): Promise<UsageFetchResult> {
       let output: string;
 
       try {
         output = await runUsageCommand();
       } catch (error) {
-        console.warn("[collector] claude 실행 실패 ·", messageOf(error));
-        return null;
+        const detail = messageOf(error);
+        console.warn("[collector] claude 실행 실패 ·", detail);
+        return failed(kindOf(detail), detail);
       }
 
       const snapshot = parseUsage(output, now);
       if (snapshot === null) {
-        console.warn("[collector] 출력을 읽지 못함 ·", preview(output));
+        const detail = preview(output);
+        console.warn("[collector] 출력을 읽지 못함 ·", detail);
+        return failed("unexpected-output", "사용량 줄을 찾지 못했습니다 · " + detail);
       }
-      return snapshot;
+      return fetched(snapshot);
     },
   };
 }

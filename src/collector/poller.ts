@@ -11,7 +11,7 @@
  */
 
 import type { UsageSnapshot } from "../snapshot";
-import type { UsageSource } from "./source";
+import type { UsageFailure, UsageFetchResult, UsageSource } from "./source";
 import { DEFAULT_POLL_MINUTES, pollIntervalMs } from "../pollInterval";
 
 /** 주기를 넘겨주지 않았을 때 쓰는 값. 고를 수 있는 주기는 pollInterval.ts 에 있다. */
@@ -45,6 +45,15 @@ export interface UsagePollerOptions {
    * 성공한 적이 한 번도 없으면 실패해도 부르지 않는다. 내보낼 값이 없다.
    */
   onSnapshot: (snapshot: UsageSnapshot) => void;
+  /**
+   * 조회에 실패할 때마다 불린다.
+   *
+   * everSucceeded 는 이 앱이 뜬 뒤로 한 번이라도 값을 받아본 적이 있는지다.
+   * 없으면 화면에 띄울 것이 아무것도 없어서 안내를 보여줘야 하고, 있으면
+   * 마지막 값을 stale 로 유지하면 된다. 부르는 쪽에서 이걸 다시 세게 하면
+   * 폴러와 두 벌로 갈린다.
+   */
+  onFailure?: (failure: UsageFailure, everSucceeded: boolean) => void;
   /** 테스트에서 시계를 넘기기 위한 자리. */
   now?: () => Date;
   /**
@@ -77,6 +86,8 @@ export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandl
   let inFlight = false;
   let failures = 0;
   let last: UsageSnapshot | null = null;
+  /** 이 앱이 뜬 뒤로 한 번이라도 값을 받아봤는가. */
+  let everSucceeded = false;
 
   const schedule = (delayMs: number) => {
     if (!running) return;
@@ -89,24 +100,26 @@ export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandl
     if (!running || inFlight) return;
     inFlight = true;
 
-    let snapshot: UsageSnapshot | null = null;
+    let result: UsageFetchResult;
     try {
-      snapshot = await options.source.fetch(now());
+      result = await options.source.fetch(now());
     } catch (error) {
-      // 수집기는 실패를 null 로 돌려주기로 했지만, 그래도 여기서 막는다.
+      // 수집기는 실패를 값으로 돌려주기로 했지만, 그래도 여기서 막는다.
       // 폴링이 예외로 끊기면 캐릭터가 멈춘다.
-      console.warn("[collector] 조회 중 예외 ·", error);
-      snapshot = null;
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("[collector] 조회 중 예외 ·", message);
+      result = { ok: false, failure: { kind: "unknown", message } };
     } finally {
       inFlight = false;
     }
 
     if (!running) return;
 
-    if (snapshot !== null) {
+    if (result.ok) {
       failures = 0;
-      last = snapshot;
-      options.onSnapshot(snapshot);
+      last = result.snapshot;
+      everSucceeded = true;
+      options.onSnapshot(result.snapshot);
       schedule(intervalMs());
       return;
     }
@@ -118,6 +131,10 @@ export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandl
       last = { ...last, stale: true };
       options.onSnapshot(last);
     }
+
+    // 원인을 그대로 넘긴다. 한 번도 성공한 적이 없으면 화면에 띄울 값이
+    // 없어서, 여기서 알려주지 않으면 실패가 아무 흔적도 남기지 않는다.
+    options.onFailure?.(result.failure, everSucceeded);
 
     schedule(backoffFor(failures, intervalMs()));
   };

@@ -9,7 +9,7 @@
  */
 
 import type { UsageSnapshot } from "../snapshot";
-import type { UsageSource } from "./source";
+import { failed, fetched, type UsageFetchResult, type UsageSource } from "./source";
 
 /**
  * 개발 서버에 붙여둔 경로. 플러그인(dev/usageDevServer.ts)이 이 값을 가져다 쓴다.
@@ -23,7 +23,7 @@ export function createDevServerSource(): UsageSource {
   return {
     name: "dev-server",
 
-    async fetch(): Promise<UsageSnapshot | null> {
+    async fetch(): Promise<UsageFetchResult> {
       let response: Response;
 
       try {
@@ -31,7 +31,7 @@ export function createDevServerSource(): UsageSource {
       } catch (error) {
         // 개발 서버가 없거나 플러그인이 안 붙은 경우.
         console.warn("[collector] 개발 서버 호출 실패 ·", messageOf(error));
-        return null;
+        return failed("unknown", `개발 서버 호출 실패 · \${messageOf(error)}`);
       }
 
       if (!response.ok) {
@@ -39,7 +39,7 @@ export function createDevServerSource(): UsageSource {
           `[collector] 개발 서버가 ${response.status} 를 돌려줌 ·`,
           await errorTextOf(response),
         );
-        return null;
+        return failed("unknown", `개발 서버가 \${response.status} 를 돌려줌`);
       }
 
       let body: unknown;
@@ -47,15 +47,15 @@ export function createDevServerSource(): UsageSource {
         body = await response.json();
       } catch (error) {
         console.warn("[collector] 응답을 읽지 못함 ·", messageOf(error));
-        return null;
+        return failed("unexpected-output", `응답을 읽지 못함 · \${messageOf(error)}`);
       }
 
       if (!isSnapshot(body)) {
         console.warn("[collector] 응답 모양이 UsageSnapshot 이 아님 ·", body);
-        return null;
+        return failed("unexpected-output", "응답 모양이 UsageSnapshot 이 아닙니다");
       }
 
-      return body;
+      return fetched(body);
     },
   };
 }

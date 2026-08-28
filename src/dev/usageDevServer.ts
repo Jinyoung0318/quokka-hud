@@ -19,7 +19,7 @@
 
 import { createClaudeCliSource } from "../collector/claudeCli";
 import { DEV_USAGE_ENDPOINT } from "../collector/devServerSource";
-import type { UsageSnapshot } from "../snapshot";
+import type { UsageFetchResult } from "../collector/source";
 
 // Vite · Node 타입을 끌어오지 않으려고 쓰는 만큼만 적어둔다.
 // 프론트엔드 tsconfig 에는 @types/node 가 없다.
@@ -47,16 +47,16 @@ export function usageDevServerPlugin() {
 
   // CLI 한 번 부르는 데 7초쯤 걸린다. 탭이 여러 개거나 요청이 몰려도
   // 프로세스를 여러 개 띄우지 않도록 진행 중인 것을 같이 쓴다.
-  let inFlight: Promise<UsageSnapshot | null> | null = null;
+  let inFlight: Promise<UsageFetchResult> | null = null;
 
-  const fetchOnce = (): Promise<UsageSnapshot | null> => {
+  const fetchOnce = (): Promise<UsageFetchResult> => {
     if (inFlight === null) {
       inFlight = source.fetch();
       void inFlight.finally(() => {
         inFlight = null;
       });
     }
-    return inFlight;
+    return inFlight as Promise<UsageFetchResult>;
   };
 
   return {
@@ -72,16 +72,17 @@ export function usageDevServerPlugin() {
         }
 
         fetchOnce()
-          .then((snapshot) => {
-            if (snapshot === null) {
-              // CLI 를 부르지 못했거나 출력을 읽지 못한 경우.
-              // 브라우저는 이걸 받고 목 데이터로 넘어간다.
+          .then((result) => {
+            if (!result.ok) {
+              // 원인을 그대로 내려보낸다. 브라우저에서도 창과 같은 안내를
+              // 띄워 볼 수 있어야 배치를 확인할 수 있다.
               send(res, 502, {
-                error: "claude 사용량을 읽지 못했습니다. 개발 서버 로그를 확인하세요",
+                error: result.failure.message,
+                kind: result.failure.kind,
               });
               return;
             }
-            send(res, 200, snapshot);
+            send(res, 200, result.snapshot);
           })
           .catch((error: unknown) => {
             send(res, 500, {

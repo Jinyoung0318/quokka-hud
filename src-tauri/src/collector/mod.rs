@@ -10,9 +10,12 @@
 //! CLI 호출은 이 모듈 바깥으로 새지 않는다. 취득 경로가 바뀌어도 여기만 갈아끼운다.
 
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
+
+use serde::Serialize;
 
 /// 실행할 명령.
 const CLI_COMMAND: &str = "claude";
@@ -30,15 +33,89 @@ const POLL_INTERVAL: Duration = Duration::from_millis(50);
 /// 로그와 오류 메시지에 붙이는 앞부분 길이.
 const PREVIEW_LEN: usize = 160;
 
+/// Windows 에서 `cmd /C claude` 가 실제로 실행할 수 있는 확장자.
+///
+/// PATHEXT 에 .PS1 은 없다. npm 은 claude.ps1 도 같이 깔지만 cmd 는 그것을
+/// 실행하지 못하므로 여기서 세지 않는다.
+#[cfg(windows)]
+const WINDOWS_LAUNCHERS: [&str; 3] = ["claude.cmd", "claude.bat", "claude.exe"];
+
+/// 실패 원인. 프론트가 이것을 보고 안내 문구를 고른다.
+///
+/// 원인을 문자열 하나에 뭉쳐 넘기면 프론트가 메시지를 문자열 검색해서
+/// 갈라야 한다. 그러면 메시지를 다듬는 순간 분기가 조용히 깨진다.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FailureKind {
+    /// claude 를 PATH 에서 찾지 못했다. 설치 자체가 안 된 경우다.
+    CliNotFound,
+    /// 시간 안에 끝나지 않아 죽였다.
+    Timeout,
+    /// 그 밖. 원인을 좁히지 못한 경우다.
+    Unknown,
+}
+
+/// 프론트로 넘기는 실패. kind 로 갈라 쓰고 message 는 진단 로그에 남긴다.
+#[derive(Debug, Clone, Serialize)]
+pub struct CollectorError {
+    pub kind: FailureKind,
+    pub message: String,
+}
+
+impl CollectorError {
+    fn new(kind: FailureKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+}
+
+/// claude 를 PATH 에서 찾을 수 있는가.
+///
+/// 실행해 보고 판단하지 않는다. Windows 에서는 `cmd /C claude` 가 없는 명령을
+/// 만나면 stderr 에 "is not recognized..." 를 뱉는데, 이 문구가 시스템 언어를
+/// 따라 번역된다. 문자열로 가르면 한국어 Windows 에서 조용히 빗나간다.
+///
+/// PATH 를 직접 뒤지면 언어와 무관하고 프로세스를 띄우지 않아 빠르다.
+fn find_cli() -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+
+    for dir in std::env::split_paths(&path) {
+        #[cfg(windows)]
+        for name in WINDOWS_LAUNCHERS {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+
+        #[cfg(not(windows))]
+        {
+            let candidate = dir.join(CLI_COMMAND);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    None
+}
+
 /// 사용량 원문을 받아온다. 프론트가 이 문자열을 파싱한다.
 ///
 /// 블로킹 작업이라 별도 스레드로 넘긴다. 동기 커맨드로 두면 Tauri 가 이걸
 /// 메인 스레드에서 돌려서 7초 동안 창이 얼어붙는다.
 #[tauri::command]
-pub async fn fetch_usage_output() -> Result<String, String> {
+pub async fn fetch_usage_output() -> Result<String, CollectorError> {
     tauri::async_runtime::spawn_blocking(run_usage_command)
         .await
-        .map_err(|error| format!("수집기 작업이 끝나지 못했습니다: {error}"))?
+        .map_err(|error| {
+            CollectorError::new(
+                FailureKind::Unknown,
+                format!("수집기 작업이 끝나지 못했습니다: {error}"),
+            )
+        })?
 }
 
 fn build_command() -> Command {
@@ -69,7 +146,17 @@ fn build_command() -> Command {
     }
 }
 
-fn run_usage_command() -> Result<String, String> {
+fn run_usage_command() -> Result<String, CollectorError> {
+    // 띄우기 전에 먼저 본다. Windows 에서는 cmd 를 거치기 때문에 claude 가
+    // 없어도 spawn 은 성공하고, 실패가 cmd 의 종료 코드로만 남는다. 그러면
+    // "설치가 안 됨" 과 "실행은 됐는데 실패함" 이 같은 모양이 된다.
+    if find_cli().is_none() {
+        return Err(CollectorError::new(
+            FailureKind::CliNotFound,
+            "PATH 에서 claude 를 찾지 못했습니다",
+        ));
+    }
+
     let mut child = build_command()
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -78,7 +165,15 @@ fn run_usage_command() -> Result<String, String> {
         // 흔적이 남을 수 있어서 중립적인 임시 경로에서 돌린다.
         .current_dir(std::env::temp_dir())
         .spawn()
-        .map_err(|error| format!("claude 를 실행하지 못했습니다: {error}"))?;
+        .map_err(|error| {
+            // Unix 에서는 셸을 거치지 않아 없는 명령이 여기서 걸린다.
+            let kind = if error.kind() == std::io::ErrorKind::NotFound {
+                FailureKind::CliNotFound
+            } else {
+                FailureKind::Unknown
+            };
+            CollectorError::new(kind, format!("claude 를 실행하지 못했습니다: {error}"))
+        })?;
 
     // 파이프를 읽어내는 동안 기다린다. 읽지 않고 종료만 기다리면 출력이
     // 파이프 버퍼를 채우는 순간 양쪽이 서로를 기다리며 멈춘다.
@@ -103,7 +198,10 @@ fn run_usage_command() -> Result<String, String> {
             }
             Err(error) => {
                 let _ = child.kill();
-                return Err(format!("프로세스 상태를 확인하지 못했습니다: {error}"));
+                return Err(CollectorError::new(
+                    FailureKind::Unknown,
+                    format!("프로세스 상태를 확인하지 못했습니다: {error}"),
+                ));
             }
         }
     };
@@ -113,9 +211,12 @@ fn run_usage_command() -> Result<String, String> {
     let errors = stderr_reader.join().unwrap_or_default();
 
     if timed_out {
-        return Err(format!(
-            "{}초 안에 끝나지 않아 종료시켰습니다",
-            FETCH_TIMEOUT.as_secs()
+        return Err(CollectorError::new(
+            FailureKind::Timeout,
+            format!(
+                "{}초 안에 끝나지 않아 종료시켰습니다",
+                FETCH_TIMEOUT.as_secs()
+            ),
         ));
     }
 
@@ -127,15 +228,21 @@ fn run_usage_command() -> Result<String, String> {
 
     match status {
         Some(status) if status.success() => Ok(output),
-        Some(status) => Err(format!(
-            "claude 가 코드 {} 로 끝났고 출력이 없습니다{}",
-            status
-                .code()
-                .map(|code| code.to_string())
-                .unwrap_or_else(|| "?".to_string()),
-            detail_of(&errors),
+        Some(status) => Err(CollectorError::new(
+            FailureKind::Unknown,
+            format!(
+                "claude 가 코드 {} 로 끝났고 출력이 없습니다{}",
+                status
+                    .code()
+                    .map(|code| code.to_string())
+                    .unwrap_or_else(|| "?".to_string()),
+                detail_of(&errors),
+            ),
         )),
-        None => Err("프로세스가 끝났는지 알 수 없습니다".to_string()),
+        None => Err(CollectorError::new(
+            FailureKind::Unknown,
+            "프로세스가 끝났는지 알 수 없습니다",
+        )),
     }
 }
 

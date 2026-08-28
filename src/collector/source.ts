@@ -15,16 +15,61 @@ import {
   type BrowserUsageSource,
 } from "./browserSource";
 
+/**
+ * 실패 원인.
+ *
+ * null 하나로 뭉개면 "설치가 안 됨" 과 "로그인이 안 됨" 이 같은 실패가 된다.
+ * 그러면 화면이 사용자에게 무엇을 하라고 말해줄 수 없다.
+ *
+ *   cli-not-found     PATH 에서 claude 를 찾지 못했다. 설치가 필요하다
+ *   unexpected-output CLI 는 돌았는데 사용량 줄이 없다. 로그인이 안 된 경우가 이렇다
+ *   timeout           시간 안에 끝나지 않았다
+ *   unknown           그 밖
+ *
+ * Rust 는 앞의 셋 중 unexpected-output 을 뺀 것을 구분한다. 파싱은 프론트가
+ * 하므로 unexpected-output 도 프론트에서 붙는다.
+ * src-tauri/src/collector/mod.rs 의 FailureKind 와 이름이 같아야 한다.
+ */
+export type UsageFailureKind =
+  | "cli-not-found"
+  | "unexpected-output"
+  | "timeout"
+  | "unknown";
+
+export interface UsageFailure {
+  kind: UsageFailureKind;
+  /** 사람이 읽는 원인. 화면 문구가 아니라 진단 기록에 남기는 값이다. */
+  message: string;
+}
+
+/**
+ * 조회 한 번의 결과.
+ *
+ * 성공과 실패를 같은 타입으로 다루되, 실패에는 이유가 반드시 붙는다.
+ * 예전에는 UsageSnapshot | null 이었고 이유가 console 로만 흘러 사라졌다.
+ */
+export type UsageFetchResult =
+  | { readonly ok: true; readonly snapshot: UsageSnapshot }
+  | { readonly ok: false; readonly failure: UsageFailure };
+
+export function fetched(snapshot: UsageSnapshot): UsageFetchResult {
+  return { ok: true, snapshot };
+}
+
+export function failed(kind: UsageFailureKind, message: string): UsageFetchResult {
+  return { ok: false, failure: { kind, message } };
+}
+
 export interface UsageSource {
   /** 로그와 개발용 표시에 쓰는 이름. */
   readonly name: string;
   /**
    * 한 번 조회한다.
    *
-   * 실패하면 null 을 돌려주고 예외를 던지지 않는다. 던지더라도 폴링 루프가
+   * 실패를 값으로 돌려주고 예외를 던지지 않는다. 던지더라도 폴링 루프가
    * 막아내지만, 실패를 값으로 다루는 편이 호출부가 단순하다.
    */
-  fetch(now?: Date): Promise<UsageSnapshot | null>;
+  fetch(now?: Date): Promise<UsageFetchResult>;
 }
 
 /**

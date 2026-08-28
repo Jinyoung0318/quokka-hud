@@ -11,8 +11,7 @@
  * 값을 넘기므로 devServerSource 와 함께 정리한다.
  */
 
-import type { UsageSnapshot } from "../snapshot";
-import type { UsageSource } from "./source";
+import type { UsageFetchResult, UsageSource } from "./source";
 import { createDevServerSource } from "./devServerSource";
 import { createMockSource, type MockUsageSource } from "./mockSource";
 
@@ -48,19 +47,21 @@ export function createBrowserSource(
       mock.setDraining(draining);
     },
 
-    async fetch(now = new Date()): Promise<UsageSnapshot | null> {
+    async fetch(now = new Date()): Promise<UsageFetchResult> {
       if (mode === "mock") {
         servedBy = "mock";
         return mock.fetch(now);
       }
 
       const real = await devServer.fetch(now);
-      if (real !== null) {
+      if (real.ok) {
         servedBy = "dev-server";
         return real;
       }
 
       // 개발 서버가 없거나 CLI 가 실패했다. 화면을 멈추느니 목으로 간다.
+      // 창(tauriSource)에는 이 폴백이 없다. 실제 화면에 가짜 값을 띄우면
+      // 그게 진짜인 줄 알게 된다.
       servedBy = "mock (폴백)";
       return mock.fetch(now);
     },
