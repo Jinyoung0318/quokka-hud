@@ -41,8 +41,9 @@ API 크레딧 전용 계정은 `/usage` 출력 형식이 다를 수 있고, 그 
 
 ### 3. WebView2 (Windows)
 
-- **Windows 11** — 기본 포함, 별도 설치 불필요
-- **Windows 10** — [Evergreen 런타임](https://developer.microsoft.com/microsoft-edge/webview2/)을 따로 설치해야 합니다
+Windows 11은 기본 포함. Windows 10에서는 설치 프로그램이 필요 시 자동으로
+내려받아 설치합니다(인터넷 연결 필요). 자동 설치가 되지 않으면
+Microsoft에서 [WebView2 Evergreen 런타임](https://developer.microsoft.com/microsoft-edge/webview2/)을 직접 설치해 주세요.
 
 ### 모델 종류는 무관합니다
 
