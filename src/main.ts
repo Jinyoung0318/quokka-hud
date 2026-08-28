@@ -117,10 +117,10 @@ window.addEventListener("DOMContentLoaded", () => {
   let pollMinutes = DEFAULT_POLL_MINUTES;
 
   void mountPollingButton({
-    onChange: (minutes) => {
-      const changed = minutes !== pollMinutes;
+    onChange: (minutes, changed) => {
       pollMinutes = minutes;
-      // 바꾼 주기가 곧바로 걸리도록 한 번 돈다.
+      // 바꾼 주기가 곧바로 걸리도록 한 번 돈다. 시작할 때 저장된 값을
+      // 읽어온 경우는 이미 시작 조회가 돌고 있으므로 부르지 않는다.
       if (changed) poller?.pollNow();
     },
   });

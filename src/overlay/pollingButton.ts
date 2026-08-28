@@ -31,10 +31,13 @@ const SELECTOR = "[data-polling-action='cycle-interval']";
 
 export interface PollingButtonOptions {
   /**
-   * 주기가 정해졌을 때마다 불린다. 처음 읽었을 때 · 눌렀을 때 ·
-   * 트레이에서 바뀌었을 때 모두 온다.
+   * 주기가 정해졌을 때마다 불린다.
+   *
+   * changed 는 실제로 바뀐 것인지 알려준다. 앱이 뜰 때 저장된 값을 읽어오는
+   * 것도 이 콜백으로 오는데, 그때까지 "바뀌었다" 로 치면 시작하자마자
+   * 조회가 두 번 나간다. 한 번에 7초씩 걸리는 호출이라 그냥 넘길 수 없다.
    */
-  onChange: (minutes: number) => void;
+  onChange: (minutes: number, changed: boolean) => void;
 }
 
 export async function mountPollingButton(
@@ -52,39 +55,40 @@ export async function mountPollingButton(
     throw new Error("폴링 버튼 마크업이 index.html 과 맞지 않습니다");
   }
 
-  const render = (minutes: number) => {
+  const render = (minutes: number, changed: boolean) => {
     const safe = sanitizePollMinutes(minutes);
     // 라벨("Polling")은 마크업에 고정이다. 1배에서 그것만 접는다.
     value.textContent = formatPollValue(safe);
     button.setAttribute("aria-label", `사용량 갱신 주기 ${safe}분. 누르면 다음 주기로`);
     button.title = `사용량을 ${safe}분마다 조회합니다`;
-    options.onChange(safe);
+    options.onChange(safe, changed);
   };
 
   if (!IS_TAURI) {
     // 창이 없으니 저장은 안 되지만, 배치와 순환은 브라우저에서도 확인할 수 있어야 한다.
     let preview = DEFAULT_POLL_MINUTES;
-    render(preview);
+    render(preview, false);
     button.addEventListener("click", () => {
       preview = nextPollMinutes(preview);
-      render(preview);
+      render(preview, true);
     });
     return;
   }
 
   button.addEventListener("click", () => {
     void invoke<number>(CYCLE_COMMAND)
-      .then(render)
+      .then((minutes) => render(minutes, true))
       .catch((error) => console.error("[pollingButton] 주기 변경 실패", error));
   });
 
   // 트레이 메뉴에서 바꾼 경우에도 라벨이 따라오도록.
-  void listen<number>(POLL_CHANGED_EVENT, (event) => render(event.payload));
+  void listen<number>(POLL_CHANGED_EVENT, (event) => render(event.payload, true));
 
   try {
-    render(await invoke<number>(READ_COMMAND));
+    // 시작할 때 읽어오는 값이라 바뀐 것이 아니다.
+    render(await invoke<number>(READ_COMMAND), false);
   } catch (error) {
     console.error("[pollingButton] 지금 주기를 읽지 못했습니다", error);
-    render(DEFAULT_POLL_MINUTES);
+    render(DEFAULT_POLL_MINUTES, false);
   }
 }
