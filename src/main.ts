@@ -11,6 +11,7 @@ import type { UsageReadout } from "./usageReadout";
 import { mountReadoutOverlay } from "./overlay/readoutOverlay";
 import { mountPollingButton } from "./overlay/pollingButton";
 import { mountGuidance } from "./overlay/guidance";
+import { diagnosticsPath, recordFailure } from "./collector/diagnostics";
 import { DEFAULT_POLL_MINUTES, pollIntervalMs } from "./pollInterval";
 import { createUsageSource, setMockDraining, setSourceMode } from "./collector/source";
 import type { BrowserSourceMode } from "./collector/browserSource";
@@ -84,6 +85,8 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   });
 
+  // 진단 기록 자리는 한 번만 물어본다. 앱이 도는 동안 바뀌지 않는다.
+  void diagnosticsPath().then((path) => guidance.setLogPath(path));
 
   /** 새 잔여율을 받았을 때의 처리. */
   const applyUsage = (remainingPct: number) => {
@@ -223,6 +226,8 @@ window.addEventListener("DOMContentLoaded", () => {
     },
 
     onFailure: (failure, everSucceeded) => {
+      // 원인은 무조건 파일로 남긴다. GUI 앱이라 이것 말고는 볼 방법이 없다.
+      recordFailure(failure);
       guidance.setBusy(false);
 
       // 한 번이라도 값을 받아봤으면 마지막 값을 stale 로 두는 편이 낫다.

@@ -1,4 +1,5 @@
 mod collector;
+mod diagnostics;
 mod polling;
 mod scale;
 mod settings;
@@ -15,7 +16,9 @@ pub fn run() {
             scale::window_scale,
             scale::cycle_window_scale,
             polling::poll_interval,
-            polling::cycle_poll_interval
+            polling::cycle_poll_interval,
+            diagnostics::record_failure,
+            diagnostics::diagnostics_path
         ])
         .setup(|app| {
             let handle = app.handle().clone();
