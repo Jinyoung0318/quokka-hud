@@ -128,7 +128,8 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1;
+  /* 안내 화면(z-index 2)보다 위. 안내가 떠도 창을 닫을 수 있어야 한다. */
+  z-index: 3;
 
   height: var(--titlebar-height);
   padding: 0 var(--ui-gap);
@@ -356,6 +357,88 @@ body {
   color: rgba(242, 238, 228, 0.75);
 }
 
+/* --------------------------------------------------------------- 안내 화면 */
+
+/*
+ * 한 번도 성공하지 못한 채 실패했을 때만 뜬다.
+ *
+ * 씬을 지우지 않고 가림막으로 덮는다. 창을 통째로 비우면 고장난 것처럼
+ * 보이고, 씬을 그대로 두면 해와 연못이 값처럼 읽힌다. 실패했는데 "아침 ·
+ * 연못 가득" 이 보이면 한도가 넉넉하다는 신호와 구분되지 않는다.
+ * 가림막이 "지금 값이 아니다" 를 표시하면서 캐릭터는 뒤에 남긴다.
+ *
+ * pointer-events 를 꺼서 이 위를 끌면 창이 따라오게 한다. 켜두면 안내가
+ * 뜬 동안 창을 옮길 수 없다. 재시도 버튼만 도로 켠다.
+ */
+.guidance {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--ui-scale) * 2px);
+  padding: var(--titlebar-height) calc(var(--ui-scale) * 4px) calc(var(--ui-scale) * 3px);
+
+  text-align: center;
+  background-color: rgba(18, 16, 14, 0.86);
+  color: var(--hud-fg);
+}
+
+.guidance[hidden] {
+  display: none;
+}
+
+.guidance p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.guidance__headline {
+  font-size: var(--readout-usage);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.guidance__detail {
+  font-size: var(--readout-sync);
+  line-height: 1.4;
+  color: rgba(242, 238, 228, 0.72);
+  /* 설치 명령이 들어가는 자리라 글꼴을 고정폭으로. */
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.guidance__retry {
+  pointer-events: auto;
+  height: var(--ui-button);
+  padding: 0 calc(var(--ui-button) / 2.5);
+  font-size: calc(var(--ui-button-glyph) * 0.86);
+  font-weight: 600;
+  margin-top: calc(var(--ui-scale) * 1px);
+}
+
+.guidance__retry:disabled {
+  cursor: default;
+  color: rgba(242, 238, 228, 0.45);
+}
+
+.guidance__log {
+  font-size: calc(var(--readout-sync) * 0.92);
+  color: rgba(242, 238, 228, 0.4);
+}
+
+.guidance__log[hidden] {
+  display: none;
+}
+
+/* 짧은 말은 1배에서만 쓴다. */
+.guidance__short {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ 1배(85px) */
 
 /*
@@ -431,6 +514,26 @@ body {
 :root[data-ui-scale="1"] .hud:hover .polling {
   opacity: 1;
   pointer-events: auto;
+}
+
+/*
+ * 안내도 접는다. "Claude Code CLI가 필요합니다" 와 설치 명령은 85px 안에서
+ * 여러 줄로 흘러넘쳐 재시도 버튼을 밀어낸다. 짧은 말과 버튼만 남긴다.
+ *
+ * 이쪽은 hover 로 미루지 않는다. 창 버튼과 폴링은 평소에 필요 없는 것이라
+ * 감춰도 되지만, 안내는 지금 무언가 잘못됐다는 사실 자체다. 감추면 다시
+ * "실패가 정상으로 보이는" 자리로 돌아간다.
+ */
+:root[data-ui-scale="1"] .guidance__short {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+:root[data-ui-scale="1"] .guidance__headline,
+:root[data-ui-scale="1"] .guidance__detail,
+:root[data-ui-scale="1"] .guidance__log {
+  display: none;
 }
 
 /*

@@ -10,6 +10,7 @@ import { quokkaIdle } from "./sprites/quokka";
 import type { UsageReadout } from "./usageReadout";
 import { mountReadoutOverlay } from "./overlay/readoutOverlay";
 import { mountPollingButton } from "./overlay/pollingButton";
+import { mountGuidance } from "./overlay/guidance";
 import { DEFAULT_POLL_MINUTES, pollIntervalMs } from "./pollInterval";
 import { createUsageSource, setMockDraining, setSourceMode } from "./collector/source";
 import type { BrowserSourceMode } from "./collector/browserSource";
@@ -24,7 +25,13 @@ import {
   MOCK_POLL_INTERVAL_MS,
 } from "./dev/usageMonitor";
 
-/** 첫 조회가 도착하기 전까지 보여줄 값. */
+/**
+ * 첫 조회가 도착하기 전까지 씬이 서 있을 자리.
+ *
+ * 숫자는 이 값을 쓰지 않는다. 조회 전에는 화면에 아무 숫자도 띄우지 않는다.
+ * 예전에는 이 값이 그대로 "Usage 0%" 로 찍혀서, CLI 가 없는 사람에게는
+ * 실패가 "한도가 넉넉함" 으로 보였다. 모르는 것과 여유로운 것은 달라야 한다.
+ */
 const INITIAL_REMAINING_PCT = 100;
 
 /*
@@ -53,23 +60,30 @@ window.addEventListener("DOMContentLoaded", () => {
   const director = new SceneDirector(phaseIndexOf(INITIAL_REMAINING_PCT));
 
   /**
-   * 화면 왼쪽 위에 띄울 숫자.
+   * 화면 왼쪽 아래에 띄울 숫자.
    *
    * 캐릭터는 스냅된 단계를 보여주지만 숫자는 원래 값을 그대로 보여준다.
    * 화면을 잡고 있는 쪽의 값을 띄운다. 캐릭터와 숫자가 다른 값을 가리키면
    * 무엇을 믿어야 할지 알 수 없다.
+   *
+   * null 은 "아직 모른다" 다. 조회 전에 아무 숫자나 띄우면 그것이 값으로
+   * 읽힌다. 이 자리에 100 을 두었더니 CLI 가 없는 화면이 "Usage 0%" 로
+   * 보였다 — 실패가 아니라 여유로 읽히는 값이었다.
    */
-  let readout: UsageReadout = {
-    remainingPct: INITIAL_REMAINING_PCT,
-    // 아직 조회한 적이 없다. 시각을 붙이면 거짓말이 된다.
-    updatedAt: null,
-    stale: false,
-  };
+  let readout: UsageReadout | null = null;
 
-  /** 값이 바뀔 때마다 캔버스 위 오버레이에 반영한다. */
+  /** 값이 바뀔 때마다 캔버스 위 오버레이에 반영한다. null 이면 감춘다. */
   const syncReadout = () => {
     overlay.update(readout);
   };
+
+  const guidance = mountGuidance({
+    onRetry: () => {
+      guidance.setBusy(true);
+      poller?.pollNow();
+    },
+  });
+
 
   /** 새 잔여율을 받았을 때의 처리. */
   const applyUsage = (remainingPct: number) => {
@@ -133,6 +147,8 @@ window.addEventListener("DOMContentLoaded", () => {
       if (mockFlowing()) return;
       manualOverride = true;
       applyUsage(value);
+      // 슬라이더가 값을 만들었으므로 안내는 물러난다.
+      guidance.hide();
       // 조회에서 온 값이 아니므로 갱신 시각을 붙이지 않는다.
       readout = { remainingPct: value, updatedAt: null, stale: false };
       syncReadout();
@@ -193,6 +209,9 @@ window.addEventListener("DOMContentLoaded", () => {
     intervalMs: () => (mockFlowing() ? MOCK_POLL_INTERVAL_MS : pollIntervalMs(pollMinutes)),
     onSnapshot: (snapshot) => {
       monitor.update(snapshot, source.name); // 개발용
+      // 값이 왔으니 안내는 물러난다. stale 로 온 것이어도 보여줄 값은 있다.
+      guidance.hide();
+      guidance.setBusy(false);
       if (controllerNow() !== "collector") return;
       applyUsage(snapshot.remainingPct);
       readout = {
@@ -201,6 +220,19 @@ window.addEventListener("DOMContentLoaded", () => {
         stale: snapshot.stale,
       };
       syncReadout();
+    },
+
+    onFailure: (failure, everSucceeded) => {
+      guidance.setBusy(false);
+
+      // 한 번이라도 값을 받아봤으면 마지막 값을 stale 로 두는 편이 낫다.
+      // 볼 수 있던 것을 안내로 덮을 이유가 없다.
+      if (everSucceeded) return;
+
+      // 개발용 슬라이더가 화면을 잡고 있으면 그쪽이 값을 만들고 있다.
+      if (controllerNow() !== "collector") return;
+
+      guidance.show(failure.kind);
     },
   });
 });

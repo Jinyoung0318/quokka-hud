@@ -84,6 +84,27 @@
         <span class="polling__label">Polling</span>
         <span class="polling__value" data-polling="value">—</span>
       </button>
+
+      <!--
+        조회가 한 번도 성공하지 못했을 때만 뜨는 안내.
+        문구는 src/overlay/guidance.ts 가 채운다.
+
+        가림막 자체는 pointer-events 를 꺼둔다(styles.css). 안내가 창을 덮어도
+        그 위를 끌면 창이 따라와야 한다. 재시도 버튼만 클릭을 받는다.
+      -->
+      <div class="guidance" data-guidance-root hidden>
+        <p class="guidance__short" data-guidance="short">—</p>
+        <p class="guidance__headline" data-guidance="headline">—</p>
+        <p class="guidance__detail" data-guidance="detail"></p>
+        <button
+          type="button"
+          class="hud-button guidance__retry"
+          data-guidance="retry"
+        >
+          다시 시도
+        </button>
+        <p class="guidance__log" data-guidance="log" hidden></p>
+      </div>
     </main>
   </body>
 </html>
