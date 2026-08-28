@@ -275,4 +275,4 @@ src-tauri/src/
 
 ## 라이선스
 
-아직 정하지 않았습니다.
+[MIT](LICENSE)
