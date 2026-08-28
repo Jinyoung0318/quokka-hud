@@ -53,13 +53,13 @@
       <div class="hud__stage" data-tauri-drag-region></div>
 
       <!--
-        캔버스 위에 겹치는 잔여율 표시. 값은 src/overlay/readoutOverlay.ts 가 채운다.
+        캔버스 위에 겹치는 사용량 표시. 값은 src/overlay/readoutOverlay.ts 가 채운다.
         pointer-events 를 꺼둬서(styles.css) 드래그 영역을 가리지 않는다.
       -->
       <div class="readout" data-readout-root>
-        <div class="readout__line readout__line--rate">
-          <span class="readout__label">Remain rate</span>
-          <span class="readout__value" data-readout="rate">—</span>
+        <div class="readout__line readout__line--usage">
+          <span class="readout__label">Usage</span>
+          <span class="readout__value" data-readout="usage">—</span>
           <span class="readout__stale" data-readout="stale" title="직전 값" hidden></span>
         </div>
         <div class="readout__line readout__line--sync">

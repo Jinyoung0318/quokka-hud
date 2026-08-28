@@ -1,15 +1,23 @@
 /**
- * 화면에 띄울 잔여율 표시의 내용.
+ * 화면에 띄울 숫자의 내용과 형식.
  *
- * 그리는 방식이 둘이다. 캔버스에 픽셀 폰트로 찍는 쪽(render/readout.ts)과
- * 캔버스 위에 HTML 을 겹치는 쪽(overlay/readoutOverlay.ts). 어느 쪽이 나은지
- * 정하기 전까지 둘 다 두고, 공통으로 쓰는 내용만 여기에 모은다.
+ * **화면 숫자는 사용량, 씬 계산은 잔여율이다.**
  *
- * 한쪽을 지워도 다른 쪽이 남도록 이 파일은 어느 쪽에도 딸리지 않는다.
+ * 앱 안에서는 잔여율(remainingPct) 하나만 돌아다닌다. 해의 궤도도 나무 수관도
+ * 연못 수위도 전부 잔여율로 계산한다. 그런데 사람은 "얼마나 썼나"를 먼저
+ * 떠올리고 CLI 원문도 "51% used" 로 준다. 그래서 화면에 찍을 때만 뒤집는다.
+ *
+ * 뒤집는 자리는 이 파일 하나뿐이다. 여기저기서 100 을 빼기 시작하면
+ * 어느 값이 어느 쪽인지 금방 헷갈린다.
  */
 
 export interface UsageReadout {
-  /** 화면에 띄울 잔여율 0~100. 스냅하지 않은 값이다. */
+  /**
+   * 잔여율 0~100. 스냅하지 않은 원래 값이다.
+   *
+   * 앱 안에서 쓰는 값 그대로 담는다. 사용량으로 뒤집는 것은 formatUsage() 가
+   * 화면에 찍는 순간에만 한다.
+   */
   remainingPct: number;
   /**
    * 마지막 갱신 시각(ISO). null 이면 둘째 줄을 그리지 않는다.
@@ -22,19 +30,21 @@ export interface UsageReadout {
   stale: boolean;
 }
 
-export const RATE_LABEL = "Remain rate";
-export const SYNC_LABEL = "Sync time";
-
 /**
  * 폴링 주기를 사람이 읽는 말로.
  * POLL_INTERVAL_MS 가 바뀌면 여기도 고친다. 저절로 따라가지 않는다.
  */
 export const SYNC_EVERY = "(5m)";
 
-/** "59%" 형태로. 0~100 으로 자르고 반올림한다. */
-export function formatPercent(remainingPct: number): string {
+/**
+ * 잔여율을 사용량으로 뒤집어 "16%" 형태로 만든다.
+ *
+ * 잔여 84 -> "16%". 자른 뒤에 빼고 마지막에 반올림한다. 반올림을 먼저 하면
+ * 잔여 84.4 가 84 로 접힌 뒤 16 이 나와, 15.6 을 반올림한 것과 어긋날 수 있다.
+ */
+export function formatUsage(remainingPct: number): string {
   const clamped = remainingPct < 0 ? 0 : remainingPct > 100 ? 100 : remainingPct;
-  return `${Math.round(clamped)}%`;
+  return `${Math.round(100 - clamped)}%`;
 }
 
 /** ISO 문자열에서 현지 시각 "HH:MM" 만. 읽을 수 없으면 null. */

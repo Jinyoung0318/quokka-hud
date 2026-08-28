@@ -1,5 +1,8 @@
 /**
- * 캔버스 위에 겹치는 잔여율 표시.
+ * 캔버스 위에 겹치는 사용량 표시.
+ *
+ * 앱 안에서는 잔여율로 다니고 여기서 화면에 찍을 때만 사용량으로 뒤집는다.
+ * 뒤집는 계산은 usageReadout.ts 의 formatUsage() 한 곳에 있다.
  *
  * 85x85 캔버스 안에 픽셀 폰트로 찍어봤지만 3x5 글자를 4배로 키우면 소문자가
  * 뭉개져 읽히지 않았다. 그래서 평범한 글꼴을 캔버스 위에 얹는다.
@@ -16,7 +19,7 @@
  */
 
 import {
-  formatPercent,
+  formatUsage,
   formatSyncValue,
   type UsageReadout,
 } from "../usageReadout";
@@ -28,13 +31,13 @@ export interface ReadoutOverlayHandle {
 }
 
 export function mountReadoutOverlay(root: HTMLElement): ReadoutOverlayHandle {
-  const rate = root.querySelector<HTMLElement>('[data-readout="rate"]');
+  const usage = root.querySelector<HTMLElement>('[data-readout="usage"]');
   const sync = root.querySelector<HTMLElement>('[data-readout="sync"]');
   const stale = root.querySelector<HTMLElement>('[data-readout="stale"]');
   const syncLine = root.querySelector<HTMLElement>(".readout__line--sync");
 
-  if (!rate || !sync || !stale || !syncLine) {
-    throw new Error("잔여율 표시 마크업이 index.html 과 맞지 않습니다");
+  if (!usage || !sync || !stale || !syncLine) {
+    throw new Error("숫자 표시 마크업이 index.html 과 맞지 않습니다");
   }
 
   return {
@@ -45,7 +48,8 @@ export function mountReadoutOverlay(root: HTMLElement): ReadoutOverlayHandle {
       }
 
       root.hidden = false;
-      rate.textContent = formatPercent(readout.remainingPct);
+      // 안에서는 잔여율로 다니고 화면에 찍을 때만 사용량으로 뒤집는다.
+      usage.textContent = formatUsage(readout.remainingPct);
       stale.hidden = !readout.stale;
 
       const value = readout.updatedAt === null ? null : formatSyncValue(readout.updatedAt);
