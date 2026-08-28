@@ -144,9 +144,13 @@ body {
   gap: var(--ui-gap);
 }
 
-.titlebar__button {
-  width: var(--ui-button);
-  height: var(--ui-button);
+/*
+ * 창 위에 얹는 버튼의 공통 외형.
+ *
+ * 타이틀바 버튼과 폴링 주기 버튼이 같은 모습이어야 한다. 규칙을 두 벌 두면
+ * 한쪽만 고쳐져서 서서히 갈라진다. 자리와 크기만 각자 정한다.
+ */
+.hud-button {
   padding: 0;
   border: 0;
   border-radius: calc(var(--ui-button) / 4);
@@ -157,20 +161,25 @@ body {
   background-color: rgba(20, 20, 20, 0.35);
   color: rgba(242, 242, 242, 0.75);
   font-family: inherit;
-  font-size: var(--ui-button-glyph);
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
 }
 
-.titlebar__button:hover {
+.hud-button:hover {
   background-color: rgba(20, 20, 20, 0.7);
   color: var(--hud-fg);
 }
 
-.titlebar__button:focus-visible {
+.hud-button:focus-visible {
   outline: 1px solid rgba(255, 255, 255, 0.5);
   outline-offset: 1px;
+}
+
+.titlebar__button {
+  width: var(--ui-button);
+  height: var(--ui-button);
+  font-size: var(--ui-button-glyph);
 }
 
 .titlebar__button--close:hover {
@@ -305,6 +314,48 @@ body {
   box-shadow: 0 0 0 1px rgba(12, 10, 8, 0.9);
 }
 
+/* ------------------------------------------------------------- 폴링 주기 버튼 */
+
+/*
+ * 오른쪽 아래. 왼쪽 아래 숫자 표시와 대칭이라 같은 여백(--readout-inset)을 쓴다.
+ * 그 자리는 연못 아래 빈 땅이라 씬에서 가리는 것이 없다.
+ *
+ * 숫자 표시와 달리 pointer-events 를 끄지 않는다. 눌러야 하는 것이라 끄면
+ * 아무 일도 일어나지 않는다. 대신 마크업에 data-tauri-drag-region 을 걸지
+ * 않아서, 이 위를 눌러도 창 드래그로 잡히지 않는다.
+ */
+.polling {
+  position: absolute;
+  bottom: var(--readout-inset);
+  right: var(--readout-inset);
+  z-index: 1;
+
+  height: var(--ui-button);
+  padding: 0 calc(var(--ui-button) / 3.5);
+
+  /* 배율 버튼과 같은 글자 크기. 아이콘이 아니라 글자라 조금 작게 잡는다. */
+  font-size: calc(var(--ui-button-glyph) * 0.86);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ui-scale) * 1.5px);
+
+  /* 1m 과 5m 의 폭이 달라 버튼이 들썩이지 않게. */
+  font-variant-numeric: tabular-nums;
+}
+
+.polling__label {
+  color: rgba(242, 238, 228, 0.6);
+  font-weight: 400;
+}
+
+.polling:hover .polling__label {
+  color: rgba(242, 238, 228, 0.75);
+}
+
 /* ------------------------------------------------------------------ 1배(85px) */
 
 /*
@@ -351,4 +402,41 @@ body {
 :root[data-ui-scale="1"] .readout__label,
 :root[data-ui-scale="1"] .readout__line--sync {
   display: none;
+}
+
+/*
+ * 폴링 버튼은 창 버튼과 같이 hover 로 미룬다.
+ *
+ * 라벨을 접어 "2m" 만 남기면 폭은 창의 5분의 1로 줄지만 높이가 남는다.
+ * 버튼은 눌러야 하는 것이라 14px 아래로는 못 줄이는데, 85px 창에서 연못
+ * 아래 남는 땅은 9px 뿐이다. 상시로 두면 연못을 덮는다.
+ *
+ * 연못은 잔여량을 정확히 읽는 유일한 요소다(수위 네 칸). 나무는 분위기만,
+ * 해는 시간대만 맡는다. 그것을 가리면 1배 화면이 읽을 수 없게 된다.
+ *
+ * 그래서 라벨 접기는 그대로 두고 — hover 로 나타났을 때 덜 가리도록 —
+ * 나타나는 조건만 창 버튼과 맞춘다. 1배에서는 조작부가 hover 시에만 보인다는
+ * 규칙 하나로 정리된다. 주기를 못 보게 되는 것은 트레이 메뉴가 받쳐준다.
+ */
+:root[data-ui-scale="1"] .polling__label {
+  display: none;
+}
+
+:root[data-ui-scale="1"] .polling {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+}
+
+:root[data-ui-scale="1"] .hud:hover .polling {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/*
+ * 하한(10px)보다 한 단계 더 줄인다. 두 줄이 한 줄이 되면서 자리가 남았고,
+ * 이 창에서는 10px 이 폭의 3분의 1을 넘는다. 9px 이 읽히는 하한이다.
+ */
+:root[data-ui-scale="1"] .readout__line--usage {
+  font-size: 9px;
 }

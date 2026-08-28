@@ -18,6 +18,26 @@ use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, Runtime, WebviewW
 /// 그래서 자유 리사이즈 대신 배율을 고르게 한다.
 pub const LOGICAL_SIZE: u32 = 85;
 
+/// 폴링 주기로 고를 수 있는 분. 트레이와 창 버튼이 이 순서로 돈다.
+pub const POLL_CHOICES: [u32; 3] = [1, 2, 5];
+pub const DEFAULT_POLL_MINUTES: u32 = 2;
+
+/// 고를 수 없는 주기를 기본값으로 되돌린다. 배율과 같은 규칙이다.
+pub fn sanitize_poll_minutes(minutes: u32) -> u32 {
+    if POLL_CHOICES.contains(&minutes) {
+        minutes
+    } else {
+        DEFAULT_POLL_MINUTES
+    }
+}
+
+/// serde 가 없는 필드를 채울 때 쓴다.
+/// 이 필드가 생기기 전에 저장된 파일에도 배율과 위치는 들어 있다.
+/// 기본값으로 통째로 되돌리면 그것까지 잃는다.
+fn default_poll_minutes() -> u32 {
+    DEFAULT_POLL_MINUTES
+}
+
 pub const MIN_SCALE: u32 = 1;
 pub const MAX_SCALE: u32 = 3;
 pub const DEFAULT_SCALE: u32 = 2;
@@ -42,6 +62,9 @@ const WRITE_THROTTLE: Duration = Duration::from_secs(1);
 pub struct Settings {
     /// 논리 해상도에 곱할 배율.
     pub scale: u32,
+    /// 사용량을 몇 분마다 조회할지.
+    #[serde(default = "default_poll_minutes")]
+    pub poll_minutes: u32,
     /// 창 왼쪽 위 물리 좌표. 한 번도 옮긴 적이 없으면 없다.
     pub x: Option<i32>,
     pub y: Option<i32>,
@@ -51,6 +74,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             scale: DEFAULT_SCALE,
+            poll_minutes: DEFAULT_POLL_MINUTES,
             x: None,
             y: None,
         }
@@ -62,6 +86,7 @@ impl Settings {
     /// 손으로 고칠 수 있는 파일이라 아무 값이나 들어올 수 있다.
     fn sanitized(mut self) -> Self {
         self.scale = sanitize_scale(self.scale);
+        self.poll_minutes = sanitize_poll_minutes(self.poll_minutes);
         self
     }
 }
@@ -159,6 +184,23 @@ pub fn set_scale<R: Runtime>(app: &AppHandle<R>, scale: u32) -> Settings {
             return Settings::default();
         };
         inner.settings.scale = sanitize_scale(scale);
+        inner.written_at = Instant::now();
+        inner.dirty = false;
+        inner.settings
+    };
+
+    write(app, &updated);
+    updated
+}
+
+/// 폴링 주기를 바꾸고 바로 저장한다.
+pub fn set_poll_minutes<R: Runtime>(app: &AppHandle<R>, minutes: u32) -> Settings {
+    let state = app.state::<SettingsState>();
+    let updated = {
+        let Ok(mut inner) = state.inner.lock() else {
+            return Settings::default();
+        };
+        inner.settings.poll_minutes = sanitize_poll_minutes(minutes);
         inner.written_at = Instant::now();
         inner.dirty = false;
         inner.settings
@@ -281,6 +323,38 @@ mod tests {
         for bad in [0, 99, u32::MAX] {
             assert_eq!(sanitize_scale(bad), DEFAULT_SCALE);
         }
+    }
+
+    #[test]
+    fn 없어진_주기는_기본값으로_돌아간다() {
+        for bad in [0, 3, 10, 60, u32::MAX] {
+            assert_eq!(
+                sanitize_poll_minutes(bad),
+                DEFAULT_POLL_MINUTES,
+                "{bad} 분 보정이 틀렸다"
+            );
+        }
+    }
+
+    #[test]
+    fn 고를_수_있는_주기는_그대로_둔다() {
+        for minutes in POLL_CHOICES {
+            assert_eq!(sanitize_poll_minutes(minutes), minutes);
+        }
+    }
+
+    /// 주기 필드가 생기기 전에 저장된 파일. 통째로 기본값이 되면
+    /// 쓰던 배율과 창 위치까지 잃는다.
+    #[test]
+    fn 주기가_없는_예전_설정도_배율과_위치를_지킨다() {
+        let old = r#"{"scale":3,"x":100,"y":200}"#;
+        let parsed: Settings = serde_json::from_str(old).expect("읽혀야 한다");
+        let settings = parsed.sanitized();
+
+        assert_eq!(settings.poll_minutes, DEFAULT_POLL_MINUTES);
+        assert_eq!(settings.scale, 3);
+        assert_eq!(settings.x, Some(100));
+        assert_eq!(settings.y, Some(200));
     }
 
     #[test]

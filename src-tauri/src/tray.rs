@@ -10,16 +10,17 @@ use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem,
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Runtime};
 
-use crate::{scale, settings};
+use crate::{polling, scale, settings};
 
 const TRAY_ID: &str = "main";
 
 const MENU_SETTING: &str = "setting";
 const MENU_EXIT: &str = "exit";
 const SIZE_PREFIX: &str = "size:";
+const POLL_PREFIX: &str = "poll:";
 
-pub fn build<R: Runtime>(app: &AppHandle<R>, scale: u32) -> tauri::Result<()> {
-    let menu = build_menu(app, scale)?;
+pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let menu = build_menu(app)?;
 
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .tooltip("quokka-hud")
@@ -38,7 +39,14 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, scale: u32) -> tauri::Result<()> {
     Ok(())
 }
 
-fn build_menu<R: Runtime>(app: &AppHandle<R>, scale: u32) -> tauri::Result<Menu<R>> {
+/// 지금 설정을 읽어 메뉴를 만든다.
+///
+/// 값을 인자로 받지 않는다. 고르는 항목이 둘이 되면서 인자로 넘기면 부르는
+/// 쪽마다 둘 다 챙겨야 하고, 한쪽만 넘기는 실수가 나기 좋다.
+fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let current = app.state::<settings::SettingsState>().current();
+    let scale = current.scale;
+
     let size_items = scale::CHOICES
         .iter()
         .map(|(choice, label)| {
@@ -60,13 +68,33 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, scale: u32) -> tauri::Result<Menu<
         .collect();
     let size_menu = Submenu::with_items(app, "크기", true, &size_refs)?;
 
+    let poll_items = polling::CHOICES
+        .iter()
+        .map(|(choice, label)| {
+            CheckMenuItem::with_id(
+                app,
+                format!("{POLL_PREFIX}{choice}"),
+                *label,
+                true,
+                *choice == current.poll_minutes,
+                None::<&str>,
+            )
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+
+    let poll_refs: Vec<&dyn IsMenuItem<R>> = poll_items
+        .iter()
+        .map(|item| item as &dyn IsMenuItem<R>)
+        .collect();
+    let poll_menu = Submenu::with_items(app, "갱신 주기", true, &poll_refs)?;
+
     // 설정 창은 아직 없다. 자리는 두되 눌러도 아무 일이 없으니 꺼둔다.
     // 켜두고 아무 반응이 없으면 고장난 것으로 보인다.
     let setting = MenuItem::with_id(app, MENU_SETTING, "설정 (준비 중)", false, None::<&str>)?;
     let exit = MenuItem::with_id(app, MENU_EXIT, "종료", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
 
-    Menu::with_items(app, &[&size_menu, &separator, &setting, &exit])
+    Menu::with_items(app, &[&size_menu, &poll_menu, &separator, &setting, &exit])
 }
 
 fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEvent) {
@@ -78,6 +106,16 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEve
                 scale::change(app, chosen);
             }
             Err(_) => eprintln!("[tray] 배율을 읽지 못했습니다: {id}"),
+        }
+        return;
+    }
+
+    if let Some(rest) = id.strip_prefix(POLL_PREFIX) {
+        match rest.parse::<u32>() {
+            Ok(chosen) => {
+                polling::change(app, chosen);
+            }
+            Err(_) => eprintln!("[tray] 갱신 주기를 읽지 못했습니다: {id}"),
         }
         return;
     }
@@ -94,12 +132,12 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: tauri::menu::MenuEve
 }
 
 /// 체크 표시를 옮기려면 메뉴를 다시 만들어 갈아끼운다.
-/// 항목이 여섯 개뿐이라 핸들을 들고 다니는 것보다 이 편이 단순하다.
-pub fn refresh_menu<R: Runtime>(app: &AppHandle<R>, scale: u32) {
+/// 항목이 몇 개 안 되어 핸들을 들고 다니는 것보다 이 편이 단순하다.
+pub fn refresh_menu<R: Runtime>(app: &AppHandle<R>) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
-    match build_menu(app, scale) {
+    match build_menu(app) {
         Ok(menu) => {
             if let Err(error) = tray.set_menu(Some(menu)) {
                 eprintln!("[tray] 메뉴를 갱신하지 못했습니다: {error}");

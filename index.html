@@ -22,7 +22,7 @@
         -->
         <button
           type="button"
-          class="titlebar__button titlebar__button--scale"
+          class="hud-button titlebar__button titlebar__button--scale"
           data-titlebar-action="cycle-scale"
           aria-label="창 배율 바꾸기"
         >
@@ -32,7 +32,7 @@
         <div class="titlebar__group" data-tauri-drag-region>
           <button
             type="button"
-            class="titlebar__button"
+            class="hud-button titlebar__button"
             data-window-action="minimize"
             aria-label="최소화"
           >
@@ -40,7 +40,7 @@
           </button>
           <button
             type="button"
-            class="titlebar__button titlebar__button--close"
+            class="hud-button titlebar__button titlebar__button--close"
             data-window-action="close"
             aria-label="닫기"
           >
@@ -67,6 +67,23 @@
           <span class="readout__value" data-readout="sync">—</span>
         </div>
       </div>
+
+      <!--
+        폴링 주기 버튼. 오른쪽 아래, 연못 밑 빈 땅에 둔다.
+        라벨은 src/overlay/pollingButton.ts 가 채운다.
+
+        data-tauri-drag-region 을 걸지 않는다. 걸면 누르는 순간 창 드래그로
+        잡혀 클릭이 먹지 않는다. 감싸는 요소에도 걸지 않는다.
+      -->
+      <button
+        type="button"
+        class="hud-button polling"
+        data-polling-action="cycle-interval"
+        aria-label="사용량 갱신 주기 바꾸기"
+      >
+        <span class="polling__label">Polling</span>
+        <span class="polling__value" data-polling="value">—</span>
+      </button>
     </main>
   </body>
 </html>

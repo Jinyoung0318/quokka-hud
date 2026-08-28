@@ -31,12 +31,6 @@ export interface UsageReadout {
 }
 
 /**
- * 폴링 주기를 사람이 읽는 말로.
- * POLL_INTERVAL_MS 가 바뀌면 여기도 고친다. 저절로 따라가지 않는다.
- */
-export const SYNC_EVERY = "(5m)";
-
-/**
  * 잔여율을 사용량으로 뒤집어 "16%" 형태로 만든다.
  *
  * 잔여 84 -> "16%". 자른 뒤에 빼고 마지막에 반올림한다. 반올림을 먼저 하면
@@ -57,8 +51,12 @@ export function formatClock(iso: string): string | null {
   return `${hours}:${minutes}`;
 }
 
-/** 둘째 줄에 띄울 값. 시각을 읽을 수 없으면 null. */
+/**
+ * 둘째 줄에 띄울 값. 시각을 읽을 수 없으면 null.
+ *
+ * 주기는 붙이지 않는다. 오른쪽 아래 폴링 버튼에 이미 적혀 있어서 중복이고,
+ * 여기에도 두면 주기를 바꿀 때 두 군데가 어긋날 수 있다.
+ */
 export function formatSyncValue(updatedAt: string): string | null {
-  const clock = formatClock(updatedAt);
-  return clock === null ? null : `${clock} ${SYNC_EVERY}`;
+  return formatClock(updatedAt);
 }

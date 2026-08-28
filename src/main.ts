@@ -9,9 +9,11 @@ import { phaseIndexOf, phaseOf, snapRemaining } from "./state/skyState";
 import { quokkaIdle } from "./sprites/quokka";
 import type { UsageReadout } from "./usageReadout";
 import { mountReadoutOverlay } from "./overlay/readoutOverlay";
+import { mountPollingButton } from "./overlay/pollingButton";
+import { DEFAULT_POLL_MINUTES, pollIntervalMs } from "./pollInterval";
 import { createUsageSource, setMockDraining, setSourceMode } from "./collector/source";
 import type { BrowserSourceMode } from "./collector/browserSource";
-import { startUsagePolling, POLL_INTERVAL_MS, type UsagePollerHandle } from "./collector/poller";
+import { startUsagePolling, type UsagePollerHandle } from "./collector/poller";
 
 // 개발용 도구. 제거할 때는 이 import 와 아래 "개발용" 표시가 붙은 자리를 지운다.
 import { mountUsageSlider } from "./dev/usageSlider";
@@ -105,6 +107,24 @@ window.addEventListener("DOMContentLoaded", () => {
   /** 목 데이터가 실제로 흐르는 중인가. 실제 CLI 를 쓰는 동안은 아니다. */
   const mockFlowing = () => sourceMode === "mock" && mockDraining;
 
+  /**
+   * 지금 폴링 주기(분).
+   *
+   * 실제 값은 Rust 가 들고 있고 버튼이 물어봐서 알려준다. 그 답이 오기 전
+   * 첫 조회에는 기본값을 쓴다. 폴러가 예약할 때마다 다시 물어보므로
+   * 늦게 도착해도 다음 회차부터 반영된다.
+   */
+  let pollMinutes = DEFAULT_POLL_MINUTES;
+
+  void mountPollingButton({
+    onChange: (minutes) => {
+      const changed = minutes !== pollMinutes;
+      pollMinutes = minutes;
+      // 바꾼 주기가 곧바로 걸리도록 한 번 돈다.
+      if (changed) poller?.pollNow();
+    },
+  });
+
   const slider = mountUsageSlider({
     initial: INITIAL_REMAINING_PCT,
     onChange: (value) => {
@@ -170,7 +190,7 @@ window.addEventListener("DOMContentLoaded", () => {
     source,
     // 개발용 — 목이 흐를 때만 짧게. 실제 CLI 는 한 번에 7초쯤 걸려서
     // 짧은 주기로 부르면 계속 겹친다.
-    intervalMs: () => (mockFlowing() ? MOCK_POLL_INTERVAL_MS : POLL_INTERVAL_MS),
+    intervalMs: () => (mockFlowing() ? MOCK_POLL_INTERVAL_MS : pollIntervalMs(pollMinutes)),
     onSnapshot: (snapshot) => {
       monitor.update(snapshot, source.name); // 개발용
       if (controllerNow() !== "collector") return;

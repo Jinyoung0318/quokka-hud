@@ -1,4 +1,5 @@
 mod collector;
+mod polling;
 mod scale;
 mod settings;
 mod tray;
@@ -12,7 +13,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             collector::fetch_usage_output,
             scale::window_scale,
-            scale::cycle_window_scale
+            scale::cycle_window_scale,
+            polling::poll_interval,
+            polling::cycle_poll_interval
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -25,7 +28,7 @@ pub fn run() {
                 settings::apply(&window, &stored);
             }
 
-            tray::build(&handle, stored.scale)?;
+            tray::build(&handle)?;
             Ok(())
         })
         .on_window_event(|window, event| match event {

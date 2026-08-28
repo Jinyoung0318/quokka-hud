@@ -36,7 +36,7 @@ pub fn change<R: Runtime>(app: &AppHandle<R>, scale: u32) -> u32 {
         settings::apply(&window, &updated);
     }
 
-    tray::refresh_menu(app, updated.scale);
+    tray::refresh_menu(app);
 
     // 실패해도 창 크기는 이미 바뀌었다. 라벨만 못 따라올 뿐이라 넘어간다.
     let _ = app.emit(SCALE_CHANGED_EVENT, updated.scale);

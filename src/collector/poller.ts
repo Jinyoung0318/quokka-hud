@@ -6,25 +6,35 @@
  * 조회나 파싱이 실패해도 멈추지 않는다. 마지막 성공 값을 그대로 들고
  * stale 만 세워서 내보낸다. 캐릭터가 멈추면 고장난 것처럼 보인다.
  *
- * 연속으로 실패하면 주기를 늘린다. 429 를 부르지 않기 위한 것이고,
- * 한 번이라도 성공하면 곧바로 기본 주기로 돌아온다.
+ * 연속으로 실패하면 주기를 늘린다. 고른 주기에 비례해 물러나고,
+ * 한 번이라도 성공하면 곧바로 원래 주기로 돌아온다.
  */
 
 import type { UsageSnapshot } from "../snapshot";
 import type { UsageSource } from "./source";
+import { DEFAULT_POLL_MINUTES, pollIntervalMs } from "../pollInterval";
 
-/** 기본 주기. 이보다 짧게 하지 않는다. */
-export const POLL_INTERVAL_MS = 5 * 60 * 1000;
+/** 주기를 넘겨주지 않았을 때 쓰는 값. 고를 수 있는 주기는 pollInterval.ts 에 있다. */
+export const POLL_INTERVAL_MS = pollIntervalMs(DEFAULT_POLL_MINUTES);
 
 /**
- * 연속 실패 시의 주기. 실패가 쌓이면 뒤쪽 값을 쓰고 마지막에서 멈춘다.
- * 10분 -> 20분 -> 30분(상한).
+ * 연속 실패 시 주기를 몇 배로 늘릴지. 실패가 쌓이면 뒤쪽 값을 쓰고 마지막에서 멈춘다.
+ *
+ * 고정된 분이 아니라 배수인 것은 주기를 고를 수 있게 되었기 때문이다.
+ * 10분 고정으로 두면 1분 주기에서는 열 배로 뛰고 5분 주기에서는 두 배에
+ * 그친다. 같은 실패에 물러나는 정도가 주기마다 달라질 이유가 없다.
+ *
+ *   1분 -> 5 · 10 · 15분      2분 -> 10 · 20 · 30분      5분 -> 25 · 30 · 30분
  */
-export const BACKOFF_INTERVALS_MS: readonly number[] = [
-  10 * 60 * 1000,
-  20 * 60 * 1000,
-  30 * 60 * 1000,
-];
+export const BACKOFF_MULTIPLIERS: readonly number[] = [5, 10, 15];
+
+/**
+ * 아무리 물러나도 이보다 길게 기다리지 않는다.
+ *
+ * 없으면 5분 주기가 15배까지 가서 75분이 된다. 그동안 화면은 stale 인 채로
+ * 멈춰 있는데, 리셋이 지나가도 한 시간 넘게 모른다.
+ */
+export const BACKOFF_CAP_MS = 30 * 60 * 1000;
 
 export interface UsagePollerOptions {
   source: UsageSource;
@@ -109,7 +119,7 @@ export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandl
       options.onSnapshot(last);
     }
 
-    schedule(backoffFor(failures));
+    schedule(backoffFor(failures, intervalMs()));
   };
 
   // 앱이 뜨자마자 한 번. 주기를 기다리지 않는다.
@@ -135,9 +145,12 @@ export function startUsagePolling(options: UsagePollerOptions): UsagePollerHandl
   };
 }
 
-/** 연속 실패 횟수에 해당하는 주기. 마지막 값에서 더 늘어나지 않는다. */
-export function backoffFor(failures: number): number {
-  if (failures < 1) return POLL_INTERVAL_MS;
-  const index = Math.min(failures - 1, BACKOFF_INTERVALS_MS.length - 1);
-  return BACKOFF_INTERVALS_MS[index];
+/**
+ * 연속 실패 횟수에 해당하는 주기. 마지막 배수에서 더 늘어나지 않고,
+ * 상한을 넘지도 않는다.
+ */
+export function backoffFor(failures: number, baseMs: number = POLL_INTERVAL_MS): number {
+  if (failures < 1) return baseMs;
+  const index = Math.min(failures - 1, BACKOFF_MULTIPLIERS.length - 1);
+  return Math.min(baseMs * BACKOFF_MULTIPLIERS[index], BACKOFF_CAP_MS);
 }
