@@ -55,9 +55,17 @@ Opus든 Sonnet이든 상관없습니다. `/usage`는 슬래시 명령이라 모�
 
 ## 설치 및 실행
 
-아직 배포용 설치 파일이 없어 소스에서 빌드합니다.
+### 일반 사용자
 
-### 빌드 도구 준비 (최초 1회)
+1. 위 [실행 조건](#실행-조건)에 따라 **Claude Code CLI를 설치하고 로그인**해 둡니다. 안 되어 있으면 앱이 안내 화면만 띄웁니다
+2. [Releases](https://github.com/Jinyoung0318/quokka-hud/releases)에서 최신 `quokka-hud_0.1.0_x64-setup.exe`를 내려받아 실행합니다
+3. **Windows SmartScreen 경고가 뜨면** `추가 정보` → `실행`으로 넘깁니다. 코드 서명 인증서가 없어 뜨는 정상적인 경고입니다 ([알려진 제약](#알려진-제약) 참고)
+
+설치가 끝나면 시작 메뉴에서 실행할 수 있습니다.
+
+### 개발자용 (소스 빌드)
+
+#### 빌드 도구 준비 (최초 1회)
 
 Windows 기준입니다. 관리자 권한 PowerShell에서:
 
@@ -76,7 +84,7 @@ rustc --version
 node --version
 ```
 
-### 빌드
+#### 빌드
 
 ```bash
 git clone https://github.com/Jinyoung0318/quokka-hud.git
@@ -90,7 +98,7 @@ npm run tauri build -- --no-bundle   # 실행 파일만 (약 2분)
 
 설치 패키지(MSI·NSIS)까지 필요하면 `--no-bundle`을 빼면 됩니다. 대신 6분 남짓 걸립니다.
 
-### 개발 모드
+#### 개발 모드
 
 ```bash
 npm run tauri dev     # 창을 띄우고 핫 리로드
