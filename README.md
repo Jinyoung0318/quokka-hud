@@ -1,20 +1,318 @@
 # Quokka HUD
 
+**Windows only for now (macOS untested).**
+
+A desktop HUD that shows your Claude usage as a small character. While your limit is comfortable the sun is up and the tree is full; each time usage crosses a step, the quokka walks to the tree, tears off a leaf, carries it to the pond and drinks. The canopy thins by one step and the pond drops one level. When the limit runs out the sun sets, the moon rises, and the tree goes bare. Much like RunCat on macOS shows CPU load as a running cat, the goal here is that **you take in the state at a glance, without reading a number**.
+
+This is a personal side project. Support is best-effort.
+
+---
+
+## Screenshots
+
+| Morning (62.5% or more left) | Noon (37.5 – 62.5%) |
+|---|---|
+| ![Morning](docs/screenshots/morning.png) | ![Noon](docs/screenshots/noon.png) |
+
+| Dusk (12.5 – 37.5%) | Night (under 12.5%) |
+|---|---|
+| ![Dusk](docs/screenshots/dusk.png) | ![Night](docs/screenshots/night.png) |
+
+---
+
+## Requirements
+
+This app **never logs in by itself.** It asks your already-installed Claude Code CLI for the numbers, so without the pieces below it cannot read anything.
+
+### 1. Claude Code CLI, installed and logged in (required)
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude          # follow the login prompt on first run
+```
+
+You are ready when this prints usage in your terminal:
+
+```bash
+claude -p "/usage"
+```
+
+### 2. A subscription plan account
+
+Built around **subscription plans** such as Pro and Max, because `/usage` reports the 5-hour window and the weekly limit as percentages.
+
+API-credit-only accounts may produce a different `/usage` format, in which case parsing fails and the display stops updating.
+
+### 3. WebView2 (Windows)
+
+Included by default on Windows 11. On Windows 10 the installer downloads and
+installs it when needed (internet connection required). If that does not happen,
+install the [WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+from Microsoft directly.
+
+### Any model works
+
+Opus or Sonnet makes no difference. `/usage` is a slash command, so it never calls a model, and this app's own polling does not count toward your usage.
+
+---
+
+## Install & Run
+
+### For users
+
+1. Follow [Requirements](#requirements) above to **install the Claude Code CLI and log in**. Without it the app only shows a guidance screen
+2. Download the latest `quokka-hud_0.1.0_x64-setup.exe` from [Releases](https://github.com/Jinyoung0318/quokka-hud/releases) and run it
+3. **If Windows SmartScreen warns you**, choose `More info` → `Run anyway`. This is the expected warning for an unsigned binary (see [Known Limitations](#known-limitations))
+
+Once installed, launch it from the Start menu.
+
+### For developers (building from source)
+
+#### Build tools, one time
+
+Windows. In an elevated PowerShell:
+
+```powershell
+winget install Rustlang.Rustup                          # Rust toolchain
+winget install OpenJS.NodeJS.LTS                        # Node.js LTS
+winget install Microsoft.VisualStudio.2022.BuildTools   # MSVC linker
+```
+
+> **After installing Build Tools, open the Visual Studio Installer and check the "Desktop development with C++" workload.** The winget install alone does not bring in the linker, and the first build fails.
+
+Verify in a fresh terminal:
+
+```powershell
+rustc --version
+node --version
+```
+
+#### Build
+
+```bash
+git clone https://github.com/Jinyoung0318/quokka-hud.git
+cd quokka-hud
+npm install
+
+npm run tauri build -- --no-bundle   # executable only (about 2 min)
+```
+
+This produces `src-tauri/target/release/quokka-hud.exe`.
+
+If you also want installer packages (MSI / NSIS), drop `--no-bundle`. That takes about six minutes instead.
+
+#### Development mode
+
+```bash
+npm run tauri dev     # opens the window with hot reload
+npm run dev           # browser only, without window features
+```
+
+In the browser the app cannot spawn processes, so it runs on mock data. There is also a `/__dev/usage` endpoint attached to the dev server that returns real CLI values, and a dev panel to switch between real CLI and mock.
+
+---
+
+## Usage
+
+The window is a borderless square that stays on top.
+
+| Action | What it does |
+|---|---|
+| **Drag anywhere on the window** | Moves the window. Anywhere except the buttons works |
+| **Scale button, top left of the title bar** | Cycles 1x → 2x → 3x → 1x |
+| **`Polling` button, bottom right** | How often usage is checked. Cycles 1 min → 2 min → 5 min |
+| **− × in the title bar** | Minimize · close |
+| **Right-click the tray icon** | Size (small / medium / large) · polling interval (1 / 2 / 5 min) · settings (not yet) · quit |
+
+Window size and position survive a restart, so it comes back where you left it.
+
+Scale is an integer multiple of the 85px logical resolution.
+
+| Scale | Window | |
+|---|---|---|
+| 1x (small) | 85 × 85 | an indicator light for a corner of the screen |
+| 2x (medium, default) | 170 × 170 | |
+| 3x (large) | 255 × 255 | when you want to look at the scene |
+
+The title bar and the readout shrink with the scale too. At a fixed size, buttons sized for the large window swallow the small one.
+
+**At 1x (85 × 85) things fold instead of shrinking.** The window buttons stay hidden until you hover the window, and the readout drops its label and sync line, leaving only `16%`. At that size it matters more whether the sun is up than what the number says.
+
+---
+
+## Reading the Screen
+
+> **The usage shown is based on local sessions on this machine; it does not include other devices or claude.ai.**
+> That is the condition the CLI states in its own `/usage` output.
+
+The exact usage and the last sync time sit at the bottom left, the polling interval at the bottom right. The scene above them **snaps to four steps**.
+
+| Remaining | Sky | Tree (canopy) | Pond (level) |
+|---|---|---|---|
+| **62.5% or more** | sun low · clear | fullest | full (4) |
+| **37.5 – 62.5%** | sun at its highest | slightly thinner | 3 |
+| **12.5 – 37.5%** | sun to the horizon · red light | thinner still | 2 |
+| **under 12.5%** | moon and stars | bare | 1 |
+
+Three elements show the same value in different ways.
+
+- **Sun and sky** — the big impression that colors the whole window. The time of day registers from the corner of your eye
+- **Eucalyptus** — mood. You never count leaves; the whole canopy just grows and shrinks
+- **Pond** — the precise amount left. **Counting is the pond's job alone.** If the tree counted too, there would be two things to read
+
+Canopy and water never go to zero, even at night. At zero, a limit reset would bring the tree and the pond back all at once, which looks wrong.
+
+---
+
+## How It Works
+
+### Where the numbers come from — and why this way
+
+The app runs `claude -p "/usage"` on a timer and parses stdout. The interval is **1, 2, or 5 minutes**, defaulting to 2.
+
+```
+You are currently using your subscription to power your Claude Code usage
+Current session: 51% used · resets Aug 27, 1pm (Asia/Seoul)
+Current week (all models): 5% used · resets Sep 2, 8pm (Asia/Seoul)
+```
+
+It looks like a detour, but **it is currently the only safe path.**
+
+There is no official API for reading a personal subscription's limits. Implementing authentication directly would mean building a login form or reading a token file such as `~/.claude/.credentials.json` — and a program that holds someone else's credentials on their behalf is better left unwritten. Poking unofficial endpoints was ruled out for the same reason.
+
+So **authentication is left to the official client that is already logged in, and this app only asks it questions.** It never touches, stores, or transmits a token.
+
+`/usage` is a slash command, so it does not invoke a model. The query itself was confirmed not to consume usage (request count 322 → 322).
+
+The collector differs by environment.
+
+```
+Tauri window  →  Rust spawns the process and passes raw stdout to the frontend
+Node          →  child_process runs it directly
+Browser       →  through the dev server, falling back to mock data
+```
+
+Parsing lives in **exactly one place (TypeScript)**. Rust only forwards raw text. Two parsers would drift apart silently.
+
+If a fetch fails *after* at least one success, the app keeps the last good value and only raises a `stale` marker. A character that freezes looks broken. If it fails without ever having succeeded, a guidance screen appears instead — at that point there is no value to show at all.
+
+On consecutive failures the interval backs off to **5x → 10x → 15x of the chosen interval**, stopping at 30 minutes. A fixed number of minutes would mean the same failure backs off by different amounts depending on the interval — a fixed 10 minutes is a tenfold jump at a 1-minute interval but only double at 5 minutes.
+
+| Chosen interval | On consecutive failures |
+|---|---|
+| 1 min | 5 min → 10 min → 15 min |
+| 2 min (default) | 10 min → 20 min → 30 min |
+| 5 min | 25 min → 30 min → 30 min |
+
+The cap exists because a 5-minute interval at 15x would be 75 minutes. The display would sit `stale` that whole time and miss a limit reset by more than an hour. One success returns it to the original interval immediately.
+
+### An orbit-based state system — the sun never runs backwards
+
+The sun's position is kept not as an angle but as **a single monotonically increasing float**. Four phases make one lap (`morning`=0, `noon`=1, `dusk`=2, `night`=3); the value only ever increases and wraps past a full lap.
+
+When picking a target, only the **forward distance** is computed.
+
+```ts
+const diff = phaseIndex - position;
+return ((diff % PHASE_COUNT) + PHASE_COUNT) % PHASE_COUNT;
+```
+
+Two behaviors fall out of that one line.
+
+- **Value goes down** (75 → 50): advance one step to the next phase
+- **Value goes up** (0 → 75): a reset. Rather than rewinding, it plays out the rest of the night and **completes the lap** to arrive at morning
+
+A sun that ran east from the west because the limit reset would look wrong. Computing only forward distance means such a path is never constructed in the first place.
+
+Consumption versus reset is told apart by comparing canopy steps, not orbit distance — night→morning and morning→noon are both exactly one step forward on the orbit.
+
+Even when the value changes again mid-transition, **the quokka never teleports.** Stations are handled as coordinates on a number line (tree 0, center 1, pond 2) rather than names (`tree` / `home` / `pond`), so switching targets halfway through a segment hands over the current position as-is. If it is already carrying a leaf, it keeps carrying it and resumes from the pond segment.
+
+### An 85×85 logical resolution, scaled by integers
+
+The canvas is drawn at **85×85** and scaled up by CSS. The factor has to be an integer or pixel edges go soft.
+
+```
+canvas.width = 85          →  CSS 170px (2x)
+ctx.imageSmoothingEnabled = false
+image-rendering: pixelated
+```
+
+Path rendering such as `ctx.arc()` antialiases its edges regardless of `imageSmoothingEnabled`. That blur is plainly visible once scaled up, so **even circles are built from 1×1 rectangles.**
+
+For the same reason the usage number lives outside the canvas. It was drawn inside with a 3×5 pixel font first, but at 4x the lowercase letters smeared into an unreadable mess. It is now HTML layered over the canvas, outlined with `text-shadow` so it reads against any background.
+
+---
+
+## Known Limitations
+
+- **No code signing.** Windows SmartScreen warns on first run. You can proceed with `More info` → `Run anyway`. Without a signing certificate this stays as is for now
+- **If the `/usage` output format changes, parsing breaks.** That is inherent to reading CLI output rather than an official API. When it breaks, the display freezes at the last value and a `stale` marker appears
+- **Updates are periodic, not real time.** Choose 1, 2, or 5 minutes; the default is 2. One query takes about 7 seconds including CLI startup — at a 1-minute interval that is a CLI process alive 12% of the time, which is why 1 minute is offered but 2 is the default
+- **Usage from other devices is not counted.** Only local sessions on this machine. If you move between a laptop and a desktop, the number reads lower than reality
+- **If the CLI is missing or not logged in, a guidance screen appears.** It states what is wrong and how to fix it. Failure causes are recorded in `diagnostics.log` in the app data folder, keeping the last 20
+- **A failed fetch keeps the last value.** The display never goes blank, but the value shown may not be current. A dot appears next to the number when that happens
+- **Windows only.** No macOS or Linux builds are provided. Being Tauri-based it could work elsewhere in principle, but development and verification happened only on Windows and it has never been built for another OS
+
+---
+
+## Tech Stack
+
+| Area | Choice |
+|---|---|
+| Framework | Tauri v2 (Rust backend + WebView frontend) |
+| Frontend | Vanilla TypeScript + Vite — no framework |
+| Rendering | Canvas 2D, 85×85 logical resolution |
+| Data | Claude Code CLI process call → stdout parsing |
+
+Dependencies are kept to a minimum. The whole screen is one canvas and the state is a handful of values, which left a UI framework with nothing to do.
+
+## Project Structure
+
+```
+src/
+├── collector/     usage retrieval — CLI call and output parsing, polling, backoff
+├── state/         remaining % → orbit position → transition choreography
+├── render/        canvas rendering — sky, sun, moon, stars, tree, pond, grass, sprites
+├── sprites/       character sprites (character arrays or PNG)
+├── overlay/       HTML layered over the canvas
+├── titlebar/      custom title bar (minimize, close, scale)
+└── dev/           dev tooling — delete this folder entirely and the app still runs
+
+src-tauri/src/
+├── collector/     runs the claude CLI (forwards raw text, never parses)
+├── scale.rs       window scale
+├── settings.rs    scale and position persistence
+└── tray.rs        tray icon and menu
+```
+
+A few design principles held throughout.
+
+- **Collector and renderer are separate.** The renderer sees only a `UsageSnapshot` and does not know where the value came from
+- **CLI invocation is isolated to one place.** If the retrieval path changes, only that module is replaced
+- **The state layer knows nothing about screen coordinates.** It decides "which station" and the render layer decides the pixels
+- **Dev-only code lives in `src/dev/`.** Delete the folder and strip a few marked lines from `main.ts`
+
+More detailed design decisions and their reasoning are in [CLAUDE.md](CLAUDE.md).
+
+---
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+<details>
+<summary>한국어</summary>
+
 **현재 Windows만 지원합니다 (macOS는 미검증).**
 
 Claude 사용량을 데스크탑 위 작은 캐릭터로 보여주는 HUD입니다. 한도가 넉넉하면 해가 떠 있고 나무는 우거져 있으며, 사용량이 한 단계 늘 때마다 쿼카가 나무로 걸어가 잎을 한 장 뜯어 물고 연못으로 가서 물을 마십니다. 그만큼 나무는 성글어지고 연못 수위는 한 칸 내려갑니다. 다 쓰면 해가 지고 달이 뜨며 나무는 앙상해집니다. 맥의 RunCat이 CPU 사용률을 고양이가 뛰는 속도로 보여주듯, **숫자를 읽지 않아도 곁눈질만으로 상태가 들어오는 것**이 목표입니다.
 
 ---
 
-## 스크린샷
-
-| 아침 (62.5% 이상) | 낮 (37.5 ~ 62.5%) |
-|---|---|
-| ![아침](docs/screenshots/morning.png) | ![낮](docs/screenshots/noon.png) |
-
-| 해질녘 (12.5 ~ 37.5%) | 밤 (12.5% 미만) |
-|---|---|
-| ![해질녘](docs/screenshots/dusk.png) | ![밤](docs/screenshots/night.png) |
+스크린샷은 위 [Screenshots](#screenshots)를 참고하세요.
 
 ---
 
@@ -297,3 +595,5 @@ src-tauri/src/
 ## 라이선스
 
 [MIT](LICENSE)
+
+</details>
